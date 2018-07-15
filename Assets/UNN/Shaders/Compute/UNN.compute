@@ -1,0 +1,456 @@
+﻿#pragma kernel MatAdd
+#pragma kernel MatMul
+#pragma kernel MatMulTM
+#pragma kernel MatMulMT
+
+#pragma kernel ReLU
+#pragma kernel ReLUBackward
+
+#pragma kernel Exp
+#pragma kernel Softmax
+#pragma kernel SoftmaxBackward
+
+#pragma kernel Log
+#pragma kernel Accuracy
+#pragma kernel Sum
+#pragma kernel Grad
+
+#define BLOCK_SIZE 16
+#define THREAD [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+
+#define EPSILON 1e-16
+
+StructuredBuffer<float> _A, _B;
+RWStructuredBuffer<float> _C;
+int _ARows, _ACols, _BRows, _BCols, _CRows, _CCols;
+
+RWStructuredBuffer<float> _X, _Y;
+StructuredBuffer<float> _T;
+int _Rows, _Cols;
+
+int _BatchSize;
+float _LearningRate;
+
+THREAD
+void MatAdd(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _CRows && x < _CCols)
+  {
+    _C[y * _CCols + x] = _C[y * _CCols + x] + _B[x];
+  }
+}
+
+groupshared float As[BLOCK_SIZE][BLOCK_SIZE];
+groupshared float Bs[BLOCK_SIZE][BLOCK_SIZE];
+
+THREAD
+void MatMul(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  float acc = 0;
+
+  int n = (uint(_ACols - 1) / BLOCK_SIZE) + 1;
+  for (int m = 0; m < n; m++)
+  {
+    int ox = (m * BLOCK_SIZE + tx);
+    if (ox < _ACols && y < _ARows)
+    {
+      As[ty][tx] = _A[y * _ACols + ox];
+    }
+    else
+    {
+      As[ty][tx] = 0;
+    }
+
+    int oy = (m * BLOCK_SIZE + ty);
+    if (oy < _BRows && x < _BCols)
+    {
+      Bs[ty][tx] = _B[oy * _BCols + x];
+    }
+    else
+    {
+      Bs[ty][tx] = 0;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+    
+    for (int k = 0; k < BLOCK_SIZE; k++)
+    {
+      acc += As[ty][k] * Bs[k][tx];
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+  }
+
+  if (y < _CRows && x < _CCols)
+  {
+    _C[y * _CCols + x] = acc;
+  }
+}
+
+THREAD
+void MatMulTM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  float acc = 0;
+
+  int n = (uint(_ARows - 1) / BLOCK_SIZE) + 1;
+  for (int m = 0; m < n; m++)
+  {
+    int ox = (m * BLOCK_SIZE + tx);
+    if (y < _ACols && ox < _ARows)
+    {
+      As[ty][tx] = _A[ox * _ACols + y];
+    }
+    else
+    {
+      As[ty][tx] = 0;
+    }
+
+    int oy = (m * BLOCK_SIZE + ty);
+    if (oy < _BRows && x < _BCols)
+    {
+      Bs[ty][tx] = _B[oy * _BCols + x];
+    }
+    else
+    {
+      Bs[ty][tx] = 0;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+    
+    for (int k = 0; k < BLOCK_SIZE; k++)
+    {
+      acc += As[ty][k] * Bs[k][tx];
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+  }
+
+  if (y < _CRows && x < _CCols)
+  {
+    _C[y * _CCols + x] = acc;
+  }
+}
+
+THREAD
+void MatMulMT(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  float acc = 0;
+
+  int n = (uint(_ACols - 1) / BLOCK_SIZE) + 1;
+  for (int m = 0; m < n; m++)
+  {
+    int ox = (m * BLOCK_SIZE + tx);
+    if (ox < _ACols && y < _ARows)
+    {
+      As[ty][tx] = _A[y * _ACols + ox];
+    }
+    else
+    {
+      As[ty][tx] = 0;
+    }
+
+    int oy = (m * BLOCK_SIZE + ty);
+    if (oy < _BCols && x < _BRows)
+    {
+      Bs[ty][tx] = _B[x * _BCols + oy];
+    }
+    else
+    {
+      Bs[ty][tx] = 0;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+    
+    for (int k = 0; k < BLOCK_SIZE; k++)
+    {
+      acc += As[ty][k] * Bs[k][tx];
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+  }
+
+  if (y < _CRows && x < _CCols)
+  {
+    _C[y * _CCols + x] = acc;
+  }
+}
+
+
+THREAD
+void ReLU(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = max(0, _X[idx]);
+  }
+}
+
+THREAD
+void ReLUBackward(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = _Y[idx] * step(EPSILON, _X[idx]);
+  }
+}
+
+
+
+THREAD
+void Exp(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    float m = 0;
+    for (int i = 0; i < _Cols; i++)
+    {
+      m = max(m, _X[y * _Cols + i]);
+    }
+    _Y[y * _Cols + x] = exp(_X[y * _Cols + x] - m);
+  }
+}
+
+
+THREAD
+void Softmax(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    float sum = 0;
+    for (int i = 0; i < _Cols; i++)
+    {
+      sum += _X[y * _Cols + i];
+    }
+    _Y[y * _Cols + x] = _X[y * _Cols + x] / sum;
+  }
+}
+
+
+THREAD
+void SoftmaxBackward(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = (_X[idx] - _T[idx]) / _BatchSize;
+  }
+}
+
+
+THREAD
+void Log(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = log(_X[idx] + 1e-7) * _T[idx];
+  }
+}
+
+
+[numthreads(128, 1, 1)]
+void Accuracy(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int y = Tid.x;
+  if (y >= _Rows)
+    return;
+
+  int ix = 0;
+  float mx = 0;
+
+  int offset = y * _Cols;
+
+  int x = 0;
+  for (x = 0; x < _Cols; x++)
+  {
+    float vx = _X[offset + x];
+    if (vx > mx)
+    {
+      ix = x;
+      mx = vx;
+    }
+  }
+
+  int it = 0;
+  float mt = 0;
+  for (x = 0; x < _Cols; x++)
+  {
+    float vt = _T[offset + x];
+    if (vt > mt)
+    {
+      it = x;
+      mt = vt;
+    }
+  }
+
+  _Y[y] = (ix == it);
+}
+
+
+[numthreads(128, 1, 1)]
+void Sum(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  if (x >= _Cols)
+    return;
+
+  float acc = 0;
+  for (int y = 0; y < _Rows; y++)
+  {
+    acc += _X[y * _Cols + x];
+  }
+  _Y[x] = acc;
+}
+
+
+THREAD
+void Grad(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int tx = GTid.x;
+  int ty = GTid.y;
+  int bx = Gid.x;
+  int by = Gid.y;
+
+  int x = bx * BLOCK_SIZE + tx;
+  int y = by * BLOCK_SIZE + ty;
+
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = _Y[idx] - _LearningRate * _X[idx];
+  }
+}
+

@@ -1,0 +1,24 @@
+﻿#pragma kernel Convert
+#define THREAD [numthreads(8, 8, 1)]
+
+Texture2D<float4> _Input;
+SamplerState _PointClamp, _LinearClamp;
+
+RWStructuredBuffer<float> _Digit;
+
+int _Rows, _Cols;
+float2 _TexelSize;
+
+THREAD
+void Convert (uint3 id : SV_DispatchThreadID)
+{
+  int x = id.x;
+  int y = id.y;
+  if (x >= _Cols || y >= _Rows)
+    return;
+
+  float u = (1.0 * x) / (_Cols - 1) + _TexelSize.x;
+  float v = (1.0 * y) / (_Rows - 1) + _TexelSize.y;
+  float4 value = _Input.SampleLevel(_LinearClamp, float2(u, v), 0.0);
+  _Digit[y * _Cols + x] = value.x;
+}
