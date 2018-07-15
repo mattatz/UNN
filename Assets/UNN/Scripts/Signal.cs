@@ -8,7 +8,9 @@ using UnityEngine;
 namespace UNN
 {
 
-    public class Signal : IDisposable {
+    [System.Serializable]
+    public class Signal : IDisposable, ISerializationCallbackReceiver
+    {
 
         public ComputeBuffer Buffer { get { return buffer; } }
         public int Rows { get { return rows; } }
@@ -79,6 +81,25 @@ namespace UNN
             Debug.Log(string.Join("\n", output));
         }
 
+        public void LogMNIST(float threshold = 0.5f)
+        {
+            float[,] value = GetData();
+
+            var output = new string[28];
+            for(int y = 0; y < 28; y++)
+            {
+                int offset = (28 - y - 1) * 28;
+                string[] row = new string[28];
+                for (int x = 0; x < 28; x++)
+                {
+                    row[x] = (threshold > value[0, offset + x]) ? "." : " ";
+                }
+                output[y] = string.Join("", row);
+            }
+
+            Debug.Log(string.Join("\n", output));
+        }
+
         public void Dispose()
         {
             if(buffer != null)
@@ -86,6 +107,14 @@ namespace UNN
                 buffer.Release();
             }
             buffer = null;
+        }
+
+        public void OnBeforeSerialize()
+        {
+        }
+
+        public void OnAfterDeserialize()
+        {
         }
 
     }

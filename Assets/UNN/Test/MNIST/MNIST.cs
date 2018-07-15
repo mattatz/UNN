@@ -16,21 +16,23 @@ namespace UNN.Test
         [SerializeField, Range(1000, 10000)] protected int iterations = 10000;
         [SerializeField, Range(32, 128)] protected int batchSize = 100;
         [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.1f;
+
+        [SerializeField] protected MNISTInput input;
         
         protected DigitDataset trainDataset, testDataset;
         protected List<Texture2D> images;
 
         protected Vector2 scrollPosition = Vector2.zero;
 
-        AffineLayer affine1;
-        ReLULayer relu;
-        AffineLayer affine2;
-        SoftmaxLayer softmax;
+        protected AffineLayer affine1;
+        protected ReLULayer relu;
+        protected AffineLayer affine2;
+        protected SoftmaxLayer softmax;
 
         protected int iter = 0;
         protected float accuracy = 0f;
 
-        protected void Start () {
+        protected void Start() {
             var trainImagePath = Path.Combine(Path.Combine(Application.streamingAssetsPath, "MNIST"), "train-images.idx3-ubyte");
             var trainLabelPath = Path.Combine(Path.Combine(Application.streamingAssetsPath, "MNIST"), "train-labels.idx1-ubyte");
             var testImagePath = Path.Combine(Path.Combine(Application.streamingAssetsPath, "MNIST"), "t10k-images.idx3-ubyte");
@@ -39,7 +41,7 @@ namespace UNN.Test
             trainDataset = Load(trainImagePath, trainLabelPath);
             testDataset = Load(testImagePath, testLabelPath);
 
-            // images = dataset.Digits.Select(digit => digit.ToTexture(dataset.Rows, dataset.Columns)).ToList();
+            // images = trainDataset.Digits.Take(128).Select(digit => digit.ToTexture(trainDataset.Rows, trainDataset.Columns)).ToList();
 
             var inputSize = trainDataset.Rows * trainDataset.Columns;
             var hiddenSize = 50;
@@ -49,15 +51,23 @@ namespace UNN.Test
             relu = new ReLULayer(hiddenSize, outputSize);
             affine2 = new AffineLayer(hiddenSize, outputSize);
             softmax = new SoftmaxLayer();
+
+            /*
+            Signal input, answer;
+            trainDataset.GetSignals(new List<Digit>() { trainDataset.Digits[0] }, out input, out answer);
+            input.LogMNIST();
+            input.Dispose();
+            answer.Dispose();
+            */
         }
 
         protected void Update()
         {
-            if((++iter) <= iterations)
+            if(iter <= iterations)
             {
+                iter++;
                 Train(trainDataset, batchSize, learningRate);
-
-                if(iter % 100 == 0)
+                if(iter % 500 == 0)
                 {
                     Signal testInput, testAnswer;
                     testDataset.GetAllSignals(out testInput, out testAnswer);
@@ -248,20 +258,21 @@ namespace UNN.Test
 
         protected void OnGUI()
         {
-            GUI.Label(new Rect(30, 30, 180, 30), iter.ToString() + " / " + iterations.ToString());
+            input.DrawGUI(20);
+            GUI.Label(new Rect(20, 20, 180, 30), "iterations : " + iter.ToString() + " / " + iterations.ToString());
 
             if (trainDataset == null || images == null) return;
 
+            var n = images.Count;
+
             var cols = Mathf.CeilToInt(Screen.width / trainDataset.Columns);
-            var n = trainDataset.Digits.Count();
-
             scrollPosition = GUI.BeginScrollView(new Rect(0, 0, Screen.width, Screen.height), scrollPosition, new Rect(0, 0, Screen.width, n / cols * trainDataset.Rows));
-
             for(int i = 0; i < n; i++)
             {
                 int x = i % cols;
                 int y = i / cols;
                 GUI.DrawTexture(new Rect(x * trainDataset.Columns, y * trainDataset.Rows, trainDataset.Columns, trainDataset.Rows), images[i]);
+                // GUI.Label(new Rect(x * trainDataset.Columns, y * trainDataset.Rows, trainDataset.Columns, trainDataset.Rows), trainDataset.Digits[i].Label.ToString());
             }
 
             GUI.EndScrollView();

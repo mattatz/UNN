@@ -7,12 +7,11 @@ using UnityEngine;
 namespace UNN
 {
 
+    [System.Serializable]
     public class AffineLayer : Layer
     {
-
-        protected Signal weights, biases;
-
-        protected int rows, columns;
+        [SerializeField] protected Signal weights, biases;
+        [SerializeField] protected int rows, columns;
 
         protected Signal x;
         protected Signal dW, dB;

@@ -17,8 +17,11 @@ void Convert (uint3 id : SV_DispatchThreadID)
   if (x >= _Cols || y >= _Rows)
     return;
 
-  float u = (1.0 * x) / (_Cols - 1) + _TexelSize.x;
-  float v = (1.0 * y) / (_Rows - 1) + _TexelSize.y;
+  // float u = (1.0 * x) / (_Cols - 1) + _TexelSize.x;
+  // float v = (1.0 * y) / (_Rows - 1) + _TexelSize.y;
+
+  float u = (1.0 * x) / (_Cols - 1);
+  float v = (1.0 * y) / (_Rows - 1);
   float4 value = _Input.SampleLevel(_LinearClamp, float2(u, v), 0.0);
   _Digit[y * _Cols + x] = value.x;
 }

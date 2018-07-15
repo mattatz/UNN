@@ -48,7 +48,7 @@ namespace UNN.Test
             GetSignals(source, out input, out answer);
         }
 
-        protected void GetSignals(List<Digit> source, out Signal input, out Signal answer)
+        public void GetSignals(List<Digit> source, out Signal input, out Signal answer)
         {
             int inputSize = rows * columns;
             const int outputSize = 10;
