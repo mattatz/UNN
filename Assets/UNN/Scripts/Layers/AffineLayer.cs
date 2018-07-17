@@ -10,6 +10,9 @@ namespace UNN
     [System.Serializable]
     public class AffineLayer : Layer
     {
+        public Signal Weights { get { return weights; } }
+        public Signal Biases { get { return biases; } }
+
         [SerializeField] protected Signal weights, biases;
         [SerializeField] protected int rows, columns;
 
@@ -77,18 +80,9 @@ namespace UNN
             return dx;
         }
 
-        public void Learn(ComputeShader compute, float rate)
+        public void Learn(Optimizer optimizer, ComputeShader compute, float rate)
         {
-            var kernel = compute.FindKernel("Grad");
-
-            compute.SetFloat("_LearningRate", rate);
-            compute.SetBuffer(kernel, "_X", dW.Buffer);
-            compute.SetBuffer(kernel, "_Y", weights.Buffer);
-            Dispatch(compute, kernel, weights.Rows, weights.Columns);
-
-            compute.SetBuffer(kernel, "_X", dB.Buffer);
-            compute.SetBuffer(kernel, "_Y", biases.Buffer);
-            Dispatch(compute, kernel, biases.Rows, biases.Columns);
+            optimizer.Update(compute, rate, weights, dW, biases, dB);
         }
 
         public override void Dispose()

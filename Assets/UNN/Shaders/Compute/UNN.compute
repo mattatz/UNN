@@ -13,7 +13,9 @@
 #pragma kernel Log
 #pragma kernel Accuracy
 #pragma kernel Sum
-#pragma kernel Grad
+
+#pragma kernel SGD
+#pragma kernel Momentum
 
 #define BLOCK_SIZE 16
 #define THREAD [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
@@ -29,7 +31,7 @@ StructuredBuffer<float> _T;
 int _Rows, _Cols;
 
 int _BatchSize;
-float _LearningRate;
+float _LearningRate, _Momentum;
 
 THREAD
 void MatAdd(
@@ -433,24 +435,35 @@ void Sum(
 
 
 THREAD
-void Grad(
+void SGD(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
 )
 {
-  int tx = GTid.x;
-  int ty = GTid.y;
-  int bx = Gid.x;
-  int by = Gid.y;
-
-  int x = bx * BLOCK_SIZE + tx;
-  int y = by * BLOCK_SIZE + ty;
-
+  int x = Tid.x;
+  int y = Tid.y;
   if (y < _Rows && x < _Cols)
   {
     int idx = y * _Cols + x;
     _Y[idx] = _Y[idx] - _LearningRate * _X[idx];
+  }
+}
+
+THREAD
+void Momentum(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _X[idx] = _Momentum * _X[idx] - _LearningRate * _T[idx];
+    _Y[idx] = _Y[idx] + _X[idx];
   }
 }
 

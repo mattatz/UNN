@@ -54,6 +54,19 @@ namespace UNN
         {
         }
 
+        public void Init(float v = 0f)
+        {
+            float[,] value = new float[rows, columns];
+            for(int y = 0; y < rows; y++)
+            {
+                for(int x = 0; x < columns; x++)
+                {
+                    value[y, x] = v;
+                }
+            }
+            buffer.SetData(value);
+        }
+
         public float[,] GetData()
         {
             float[,] value = new float[rows, columns];

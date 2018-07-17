@@ -15,6 +15,7 @@ namespace UNN.Test
         [SerializeField] protected ComputeShader compute;
         [SerializeField, Range(1000, 10000)] protected int iterations = 10000;
         [SerializeField, Range(32, 128)] protected int batchSize = 100;
+        [SerializeField, Range(100, 500)] protected int measure = 500;
         [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.1f;
 
         [SerializeField] protected MNISTInput input;
@@ -28,6 +29,8 @@ namespace UNN.Test
         protected ReLULayer relu;
         protected AffineLayer affine2;
         protected SoftmaxLayer softmax;
+
+        protected Optimizer optim1, optim2;
 
         protected int iter = 0;
         protected float accuracy = 0f;
@@ -52,6 +55,12 @@ namespace UNN.Test
             affine2 = new AffineLayer(hiddenSize, outputSize);
             softmax = new SoftmaxLayer();
 
+            // optim1 = new SGDOptimizer(affine1);
+            // optim2 = new SGDOptimizer(affine2);
+
+            optim1 = new MomentumOptimizer(affine1, 0.9f);
+            optim2 = new MomentumOptimizer(affine2, 0.9f);
+
             /*
             Signal input, answer;
             trainDataset.GetSignals(new List<Digit>() { trainDataset.Digits[0] }, out input, out answer);
@@ -63,15 +72,15 @@ namespace UNN.Test
 
         protected void Update()
         {
-            if(iter <= iterations)
+            if(iter < iterations)
             {
                 iter++;
                 Train(trainDataset, batchSize, learningRate);
-                if(iter % 500 == 0)
+                if(iter % measure == 0)
                 {
                     Signal testInput, testAnswer;
                     testDataset.GetAllSignals(out testInput, out testAnswer);
-                    Debug.Log(Accuracy(testInput, testAnswer));
+                    accuracy = Accuracy(testInput, testAnswer);
                     testInput.Dispose();
                     testAnswer.Dispose();
                 }
@@ -168,8 +177,8 @@ namespace UNN.Test
 
         protected void Learn(float rate = 0.1f)
         {
-            affine1.Learn(compute, rate);
-            affine2.Learn(compute, rate);
+            affine1.Learn(optim1, compute, rate);
+            affine2.Learn(optim2, compute, rate);
         }
 
         protected DigitDataset Load(string imagePath, string labelPath, int limit = -1)
@@ -254,12 +263,16 @@ namespace UNN.Test
             relu.Dispose();
             affine2.Dispose();
             softmax.Dispose();
+
+            optim1.Dispose();
+            optim2.Dispose();
         }
 
         protected void OnGUI()
         {
-            input.DrawGUI(20);
+            input.DrawGUI(40);
             GUI.Label(new Rect(20, 20, 180, 30), "iterations : " + iter.ToString() + " / " + iterations.ToString());
+            GUI.Label(new Rect(20, 40, 180, 30), "accuracy : " + accuracy.ToString("0.00"));
 
             if (trainDataset == null || images == null) return;
 
