@@ -5,6 +5,7 @@ using UnityEngine;
 namespace UNN
 {
 
+    [System.Serializable]
     public class SGDOptimizer : Optimizer {
 
         public SGDOptimizer(AffineLayer layer) : base(layer)

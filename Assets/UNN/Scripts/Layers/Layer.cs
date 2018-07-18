@@ -8,6 +8,7 @@ namespace UNN
 {
 
 
+    [System.Serializable]
     public abstract class Layer : IDisposable {
 
         public Layer()

@@ -5,6 +5,7 @@ using UnityEngine;
 namespace UNN
 {
 
+    [System.Serializable]
     public class SoftmaxLayer : OutputLayer {
 
         protected Signal y;

@@ -5,11 +5,12 @@ using UnityEngine;
 namespace UNN
 {
 
+    [System.Serializable]
     public class MomentumOptimizer : Optimizer
     {
 
-        protected Signal vW, vB;
-        protected float momentum;
+        [SerializeField] protected Signal vW, vB;
+        [SerializeField] protected float momentum;
 
         public MomentumOptimizer(AffineLayer layer, float momentum = 0.9f) : base(layer)
         {

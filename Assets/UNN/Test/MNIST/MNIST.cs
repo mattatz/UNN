@@ -18,6 +18,7 @@ namespace UNN.Test
         [SerializeField, Range(100, 500)] protected int measure = 500;
         [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.1f;
 
+        [SerializeField] protected string filename = "MNISTNetwork.json";
         [SerializeField] protected MNISTInput input;
         
         protected DigitDataset trainDataset, testDataset;
@@ -25,15 +26,13 @@ namespace UNN.Test
 
         protected Vector2 scrollPosition = Vector2.zero;
 
-        protected AffineLayer affine1;
-        protected ReLULayer relu;
-        protected AffineLayer affine2;
-        protected SoftmaxLayer softmax;
+        protected MNISTNetwork network;
+        protected string path;
 
-        protected Optimizer optim1, optim2;
-
+        [SerializeField] protected bool training;
         protected int iter = 0;
         protected float accuracy = 0f;
+        protected int lastLabel;
 
         protected void Start() {
             var trainImagePath = Path.Combine(Path.Combine(Application.streamingAssetsPath, "MNIST"), "train-images.idx3-ubyte");
@@ -41,25 +40,23 @@ namespace UNN.Test
             var testImagePath = Path.Combine(Path.Combine(Application.streamingAssetsPath, "MNIST"), "t10k-images.idx3-ubyte");
             var testLabelPath = Path.Combine(Path.Combine(Application.streamingAssetsPath, "MNIST"), "t10k-labels.idx1-ubyte");
 
-            trainDataset = Load(trainImagePath, trainLabelPath);
-            testDataset = Load(testImagePath, testLabelPath);
+            trainDataset = LoadDataset(trainImagePath, trainLabelPath);
+            testDataset = LoadDataset(testImagePath, testLabelPath);
 
             // images = trainDataset.Digits.Take(128).Select(digit => digit.ToTexture(trainDataset.Rows, trainDataset.Columns)).ToList();
 
             var inputSize = trainDataset.Rows * trainDataset.Columns;
-            var hiddenSize = 50;
-            var outputSize = 10;
 
-            affine1 = new AffineLayer(inputSize, hiddenSize);
-            relu = new ReLULayer(hiddenSize, outputSize);
-            affine2 = new AffineLayer(hiddenSize, outputSize);
-            softmax = new SoftmaxLayer();
-
-            // optim1 = new SGDOptimizer(affine1);
-            // optim2 = new SGDOptimizer(affine2);
-
-            optim1 = new MomentumOptimizer(affine1, 0.9f);
-            optim2 = new MomentumOptimizer(affine2, 0.9f);
+            path = Path.Combine(Application.persistentDataPath, filename);
+            if(File.Exists(path))
+            {
+                Debug.Log("load " + path);
+                network = LoadNetwork();
+                training = false;
+            } else
+            {
+                network = new MNISTNetwork(inputSize, 50, 10);
+            }
 
             /*
             Signal input, answer;
@@ -72,27 +69,44 @@ namespace UNN.Test
 
         protected void Update()
         {
-            if(iter < iterations)
+            if(training && iter < iterations)
             {
                 iter++;
-                Train(trainDataset, batchSize, learningRate);
+                network.Train(compute, trainDataset, batchSize, learningRate);
                 if(iter % measure == 0)
                 {
                     Signal testInput, testAnswer;
                     testDataset.GetAllSignals(out testInput, out testAnswer);
-                    accuracy = Accuracy(testInput, testAnswer);
+                    accuracy = network.Accuracy(compute, testInput, testAnswer);
                     testInput.Dispose();
                     testAnswer.Dispose();
                 }
             }
         }
 
-        public float[,] Evaluate(Signal input)
+        public void Evaluate(Signal input)
         {
-            var output = Predict(input);
+            var output = network.Predict(compute, input);
+            // var output = Predict(input);
             float[,] result = output.GetData();
             output.Dispose();
-            return result;
+
+            // int rows = result.GetLength(0);
+            int cols = result.GetLength(1);
+
+            int label = 0;
+            float max = 0f;
+            for(int x = 0; x < cols; x++)
+            {
+                var v = result[0, x];
+                if(v > max)
+                {
+                    max = v;
+                    label = x;
+                }
+            }
+
+            lastLabel = label;
         }
 
         protected void Test()
@@ -119,69 +133,20 @@ namespace UNN.Test
             sigAB.Dispose();
         }
 
-        protected Signal Predict(Signal input)
+        protected void SaveNetwork()
         {
-            var s0 = affine1.Forward(compute, input);
-            var s1 = relu.Forward(compute, s0);
-            var s2 = affine2.Forward(compute, s1);
-
-            s0.Dispose();
-
-            return s2;
+            var json = JsonUtility.ToJson(network);
+            File.WriteAllText(path, json);
         }
 
-        protected float Loss(Signal signal, Signal answer)
+        protected MNISTNetwork LoadNetwork()
         {
-            var predictSig = Predict(signal);
-
-            var softmaxSig = softmax.Forward(compute, predictSig);
-            predictSig.Dispose();
-
-            return CrossEntropyError.Loss(compute, softmaxSig, answer);
+            var json = File.ReadAllText(path);
+            var network = JsonUtility.FromJson(json, typeof(MNISTNetwork)) as MNISTNetwork;
+            return network;
         }
 
-        protected void Train(DigitDataset dataset, int batchSize, float learningRate)
-        {
-            Signal input, answer;
-            dataset.GetSubSignals(batchSize, out input, out answer);
-            Gradient(input, answer);
-            Learn(learningRate);
-
-            input.Dispose();
-            answer.Dispose();
-        }
-
-        protected float Accuracy(Signal input, Signal answer)
-        {
-            var output = Predict(input);
-            float acc = UNN.Accuracy.Calculate(compute, input, output, answer);
-            output.Dispose();
-            return acc;
-        }
-
-        protected void Gradient(Signal input, Signal answer)
-        {
-            Loss(input, answer);
-
-            var softmaxSig = softmax.Backward(compute, answer);
-            // softmaxSig.Log();
-
-            var a2Sig = affine2.Backward(compute, softmaxSig);
-            a2Sig = relu.Backward(compute, a2Sig);
-            var a1Sig = affine1.Backward(compute, a2Sig);
-
-            softmaxSig.Dispose();
-            a2Sig.Dispose();
-            a1Sig.Dispose();
-        }
-
-        protected void Learn(float rate = 0.1f)
-        {
-            affine1.Learn(optim1, compute, rate);
-            affine2.Learn(optim2, compute, rate);
-        }
-
-        protected DigitDataset Load(string imagePath, string labelPath, int limit = -1)
+        protected DigitDataset LoadDataset(string imagePath, string labelPath, int limit = -1)
         {
             var labelsStream = new FileStream(labelPath, FileMode.Open);
             var imagesStream = new FileStream(imagePath, FileMode.Open);
@@ -248,7 +213,6 @@ namespace UNN.Test
             return new DigitDataset(digits, rows, cols);
         }
 
-
         // https://stackoverflow.com/questions/49407772/reading-mnist-database
         protected int ReadBigInt32(BinaryReader br)
         {
@@ -259,23 +223,43 @@ namespace UNN.Test
 
         protected void OnDestroy()
         {
-            affine1.Dispose();
-            relu.Dispose();
-            affine2.Dispose();
-            softmax.Dispose();
-
-            optim1.Dispose();
-            optim2.Dispose();
+            network.Dispose();
         }
 
         protected void OnGUI()
         {
-            input.DrawGUI(40);
-            GUI.Label(new Rect(20, 20, 180, 30), "iterations : " + iter.ToString() + " / " + iterations.ToString());
-            GUI.Label(new Rect(20, 40, 180, 30), "accuracy : " + accuracy.ToString("0.00"));
+            if (trainDataset != null && images != null)
+            {
+                DrawMNISTView();
+            }
 
-            if (trainDataset == null || images == null) return;
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), input.Buffer);
 
+            using(new GUILayout.HorizontalScope())
+            {
+                GUILayout.Space(20f);
+                using(new GUILayout.VerticalScope())
+                {
+                    GUILayout.Space(20f);
+
+                    training = GUILayout.Toggle(training, "training");
+                    GUILayout.Label("iterations : " + iter.ToString() + " / " + iterations.ToString());
+
+                    GUILayout.Label("accuracy : " + accuracy.ToString("0.00"));
+                    GUILayout.Label("result : " + lastLabel);
+
+                    GUILayout.Space(10f);
+                    if(GUILayout.Button("Save"))
+                    {
+                        SaveNetwork();
+                    }
+                }
+            }
+
+        }
+
+        protected void DrawMNISTView()
+        {
             var n = images.Count;
 
             var cols = Mathf.CeilToInt(Screen.width / trainDataset.Columns);

@@ -8,22 +8,18 @@ namespace UNN
 {
 
     [System.Serializable]
-    public class AffineLayer : Layer
+    public class AffineLayer : InnerLayer
     {
         public Signal Weights { get { return weights; } }
         public Signal Biases { get { return biases; } }
 
         [SerializeField] protected Signal weights, biases;
-        [SerializeField] protected int rows, columns;
 
         protected Signal x;
         protected Signal dW, dB;
 
-        public AffineLayer(int rows, int columns, float weight_std = 0.01f) : base()
+        public AffineLayer(int rows, int columns, float weight_std = 0.01f) : base(rows, columns)
         {
-            this.rows = rows;
-            this.columns = columns;
-
             var weights = new float[rows, columns];
             var biases = new float[columns];
 

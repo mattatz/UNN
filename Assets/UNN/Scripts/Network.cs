@@ -1,15 +1,16 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+
 using UnityEngine;
 
 namespace UNN
 {
 
-    public class Network {
+    public abstract class Network : IDisposable
+    {
 
-        public Network(int inputSize, int[] hiddenSize, int outputSize, ActivationMethod method = ActivationMethod.Relu)
-        {
-        }
+        public abstract void Dispose();
 
     }
 

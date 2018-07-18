@@ -7,6 +7,7 @@ using UnityEngine;
 namespace UNN
 {
 
+    [System.Serializable]
     public abstract class Optimizer : IDisposable {
 
         public Optimizer(AffineLayer layer) { }

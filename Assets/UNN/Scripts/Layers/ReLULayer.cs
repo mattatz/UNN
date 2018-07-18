@@ -7,12 +7,14 @@ using UnityEngine;
 namespace UNN
 {
 
+
+    [System.Serializable]
     public class ReLULayer : Layer
     {
 
         protected Signal mask;
 
-        public ReLULayer(int rows, int columns) : base()
+        public ReLULayer() : base()
         {
         }
 

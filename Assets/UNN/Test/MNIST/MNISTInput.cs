@@ -7,6 +7,8 @@ namespace UNN.Test
 
     public class MNISTInput : MonoBehaviour {
 
+        public RenderTexture Buffer { get { return buffers[read]; } }
+
         [SerializeField] protected MNIST network;
         [SerializeField] protected Material input;
         [SerializeField] protected ComputeShader converter;
@@ -83,23 +85,7 @@ namespace UNN.Test
 
             // signal.LogMNIST();
 
-            var result = network.Evaluate(signal);
-            // int rows = result.GetLength(0);
-            int cols = result.GetLength(1);
-
-            int label = 0;
-            float max = 0f;
-            for(int x = 0; x < cols; x++)
-            {
-                var v = result[0, x];
-                if(v > max)
-                {
-                    max = v;
-                    label = x;
-                }
-            }
-            lastLabel = label;
-
+            network.Evaluate(signal);
             signal.Dispose();
         }
 
@@ -117,14 +103,6 @@ namespace UNN.Test
         {
             buffers[0].Release();
             buffers[1].Release();
-        }
-
-        public void DrawGUI(int offset)
-        {
-            var texture = buffers[0];
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), texture);
-
-            GUI.Label(new Rect(20, offset + 20, 180, 30), "result : " + lastLabel.ToString());
         }
 
     }

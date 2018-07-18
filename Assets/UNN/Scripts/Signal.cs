@@ -17,7 +17,9 @@ namespace UNN
         public int Columns { get { return columns; } }
 
         protected ComputeBuffer buffer;
-        protected int rows, columns;
+        [SerializeField] protected int rows, columns;
+
+        [SerializeField] protected Matrix[] data = null;
 
         public Signal(float[] v)
         {
@@ -124,10 +126,46 @@ namespace UNN
 
         public void OnBeforeSerialize()
         {
+            if (buffer == null) return;
+
+            // Debug.Log("OnBeforeSerialize " + rows + " x " + columns);
+
+            float[,] m = GetData();
+            data = new Matrix[rows];
+            for(int y = 0; y < rows; y++)
+            {
+                var v = new Matrix(columns);
+                for(int x = 0; x < columns; x++)
+                {
+                    v.SetValue(x, m[y, x]);
+                }
+                data[y] = v;
+            }
+
         }
 
         public void OnAfterDeserialize()
         {
+            if (data == null || rows <= 0 || columns <= 0) return;
+
+            var m = new float[rows, columns];
+            for(int y = 0; y < rows; y++)
+            {
+                var v = data[y];
+                for(int x = 0; x < columns; x++)
+                {
+                    m[y, x] = v.GetValue(x);
+                }
+            }
+
+            if(buffer != null)
+            {
+                Debug.LogWarning("buffer is not null");
+                buffer.Dispose();
+            }
+
+            buffer = new ComputeBuffer(rows * columns, Marshal.SizeOf(typeof(float)));
+            buffer.SetData(m);
         }
 
     }
