@@ -7,25 +7,31 @@ namespace UNN
 
     public class MatOperations {
 
-        public static void Copy(ComputeShader compute, Signal C, Signal B)
+        public static void CopyMM(ComputeShader compute, Signal C, Signal B)
         {
             OpMM(compute, compute.FindKernel("CopyMM"), C, B);
         }
 
-        public static void Sqrt(ComputeShader compute, Signal C, Signal B)
+        public static void SqrtMM(ComputeShader compute, Signal C, Signal B)
         {
             OpMM(compute, compute.FindKernel("SqrtMM"), C, B);
         }
 
-        public static void Add(ComputeShader compute, Signal C, Signal B)
+        public static void AddMM(ComputeShader compute, Signal C, Signal B)
         {
             OpMM(compute, compute.FindKernel("AddMM"), C, B);
         }
 
-        public static void Sub(ComputeShader compute, Signal C, Signal B)
+        public static void SubMM(ComputeShader compute, Signal C, Signal B)
         {
             OpMM(compute, compute.FindKernel("SubMM"), C, B);
         }
+
+        public static void MulMM(ComputeShader compute, Signal C, Signal B)
+        {
+            OpMM(compute, compute.FindKernel("MulMM"), C, B);
+        }
+
 
         public static void AddMV(ComputeShader compute, Signal C, Signal B)
         {
@@ -42,33 +48,20 @@ namespace UNN
             OpMV(compute, compute.FindKernel("DivMV"), C, B);
         }
 
-        public static void Sum(ComputeShader compute, Signal X, Signal Y)
+        public static void SumVM(ComputeShader compute, Signal C, Signal B)
         {
-            Sum(compute, X.Buffer, Y.Buffer, X.Rows, X.Columns, Y.Rows, Y.Columns);
+            OpVM(compute, compute.FindKernel("SumVM"), C, B);
         }
 
-        public static void Sum(ComputeShader compute, ComputeBuffer X, ComputeBuffer Y, int xRows, int xCols, int yRows, int yCols)
+        public static void MeanVM(ComputeShader compute, Signal C, Signal B)
         {
-            if(xCols != yCols)
-            {
-                Debug.Log("X cols != Y cols");
-            }
+            OpVM(compute, compute.FindKernel("MeanVM"), C, B);
+        } 
 
-            if(yRows > 1)
-            {
-                Debug.Log("Y rows must be one.");
-            }
-
-            compute.SetInt("_Rows", xRows); compute.SetInt("_Cols", xCols);
-
-            var kernel = compute.FindKernel("Sum");
-            compute.SetBuffer(kernel, "_X", X);
-            compute.SetBuffer(kernel, "_Y", Y);
-
-            uint tx, ty, tz;
-            compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
-            compute.Dispatch(kernel, Mathf.FloorToInt(((int)yCols - 1) / tx) + 1, (int)ty, (int)tz);
-        }
+        public static void VarianceVM(ComputeShader compute, Signal C, Signal B)
+        {
+            OpVM(compute, compute.FindKernel("VarianceVM"), C, B);
+        } 
 
         public static void Multiply(ComputeShader compute, Signal A, Signal B, Signal C)
         {
@@ -183,6 +176,32 @@ namespace UNN
             if(bRows != 1)
             {
                 Debug.LogWarning("B rows must be 1.");
+            }
+
+            if(cCols != bCols)
+            {
+                Debug.LogWarning("B & C does not same columns.");
+            }
+
+            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
+            compute.SetInt("_BRows", bRows); compute.SetInt("_BCols", bCols);
+
+            compute.SetBuffer(kernel, "_C", C.Buffer);
+            compute.SetBuffer(kernel, "_B", B.Buffer);
+
+            uint tx, ty, tz;
+            compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
+            compute.Dispatch(kernel, Mathf.FloorToInt(((int)cCols - 1) / tx) + 1, Mathf.FloorToInt(((int)cRows - 1) / ty) + 1, (int)tz);
+        }
+
+        protected static void OpVM(ComputeShader compute, int kernel, Signal C, Signal B)
+        {
+            int cRows = C.Rows, cCols = C.Columns;
+            int bRows = B.Rows, bCols = B.Columns;
+
+            if(cRows != 1)
+            {
+                Debug.LogWarning("C rows must be 1.");
             }
 
             if(cCols != bCols)

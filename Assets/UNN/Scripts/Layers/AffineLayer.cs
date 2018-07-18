@@ -67,7 +67,7 @@ namespace UNN
             MatOperations.MultiplyTM(compute, x, dout, dW);
 
             dB = Refresh(1, dout.Columns, dB);
-            MatOperations.Sum(compute, dout, dB);
+            MatOperations.SumVM(compute, dB, dout);
 
             // dx.Log();
             // dw.Log();

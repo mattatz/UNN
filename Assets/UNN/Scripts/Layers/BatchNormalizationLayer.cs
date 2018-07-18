@@ -10,6 +10,9 @@ namespace UNN
 
         [SerializeField] protected float gamma, beta, momentum;
 
+        [SerializeField] protected int batchSize;
+
+        protected Signal xc, xn, std;
         protected Signal runningMean, runningVar;
 
         public BatchNormalizationLayer(float gamma, float beta, float momentum = 0.9f)
@@ -32,61 +35,79 @@ namespace UNN
             }
 
             var mu = new Signal(1, x.Columns);
-            Mean(compute, x, mu);
+            MatOperations.MeanVM(compute, x, mu);
 
-            var xc = new Signal(x); // xc = x - mu
-            MatOperations.Copy(compute, xc, x);
+            xc = Refresh(x, xc); // xc = x - mu
+            MatOperations.CopyMM(compute, xc, x);
             MatOperations.SubMV(compute, xc, mu);
 
             var variance = new Signal(1, xc.Columns);
-            Variance(compute, xc, variance);
+            MatOperations.VarianceVM(compute, xc, variance);
 
-            var std = new Signal(variance);
-            MatOperations.Sqrt(compute, std, variance);
+            std = Refresh(variance, std);
+            MatOperations.SqrtMM(compute, std, variance);
+
+            xn = Refresh(xc, xn);
+            MatOperations.CopyMM(compute, xn, xc);
+            MatOperations.DivMV(compute, xn, std);
+
+            batchSize = x.Rows;
+
+            Momentum(compute, runningMean, mu);
+            Momentum(compute, runningVar, variance);
+
+            mu.Dispose();
+            variance.Dispose();
 
             var output = new Signal(x);
+
+            var kernel = compute.FindKernel("BNForward");
+            compute.SetBuffer(kernel, "_Y", output.Buffer);
+            compute.SetFloat("_Gamma", gamma);
+            compute.SetFloat("_Beta", beta);
+            Dispatch(compute, kernel, output.Rows, output.Columns);
 
             return output;
         }
 
-        protected void Mean(ComputeShader compute, Signal x, Signal y)
+        public Signal Backward(ComputeShader compute, Signal dout)
         {
-            if(y.Rows != 1)
-            {
-                Debug.LogWarning("y.Rows is not 1.");
-            }
+            var dbeta = new Signal(1, dout.Columns);
+            var dgamma = new Signal(1, dout.Columns);
 
-            if(x.Columns != y.Columns)
-            {
-                Debug.LogWarning("x.Columns is not equal to y.Columns.");
-            }
+            MatOperations.MulMM(compute, xn, dout);
+            MatOperations.SumVM(compute, dgamma, xn);
 
-            var meanKer = compute.FindKernel("Mean");
-            compute.SetBuffer(meanKer, "_X", x.Buffer);
-            compute.SetBuffer(meanKer, "_Y", y.Buffer);
-            Dispatch(compute, meanKer, x.Rows, x.Columns);
+
+            dbeta.Dispose();
+            dgamma.Dispose();
+
+            var dx = new Signal(dout);
+
+            return dx;
         }
 
-        protected void Variance(ComputeShader compute, Signal x, Signal y)
+        protected void Momentum(ComputeShader compute, Signal Y, Signal X)
         {
-            if(y.Rows != 1)
-            {
-                Debug.LogWarning("y.Rows is not 1.");
-            }
-
-            if(x.Columns != y.Columns)
-            {
-                Debug.LogWarning("x.Columns is not equal to y.Columns.");
-            }
-
-            var meanKer = compute.FindKernel("Mean");
-            compute.SetBuffer(meanKer, "_X", x.Buffer);
-            compute.SetBuffer(meanKer, "_Y", y.Buffer);
-            Dispatch(compute, meanKer, x.Rows, x.Columns);
+            var kernel = compute.FindKernel("BNMomentum");
+            compute.SetBuffer(kernel, "_Y", Y.Buffer);
+            compute.SetBuffer(kernel, "_X", X.Buffer);
+            compute.SetFloat("_Momentum", momentum);
+            Dispatch(compute, kernel, Y.Rows, Y.Columns);
         }
 
         public override void Dispose()
         {
+            if(xc != null)
+            {
+                xc.Dispose();
+                xn.Dispose();
+                std.Dispose();
+                runningMean.Dispose();
+                runningVar.Dispose();
+
+                xc = xn = std = runningMean = runningVar = null;
+            }
         }
 
 
