@@ -1,4 +1,13 @@
-﻿#pragma kernel MatAdd
+﻿
+#pragma kernel CopyMM
+#pragma kernel AddMM
+#pragma kernel SubMM
+#pragma kernel SqrtMM
+
+#pragma kernel AddMV
+#pragma kernel SubMV
+#pragma kernel DivMV
+
 #pragma kernel MatMul
 #pragma kernel MatMulTM
 #pragma kernel MatMulMT
@@ -13,6 +22,9 @@
 #pragma kernel Log
 #pragma kernel Accuracy
 #pragma kernel Sum
+
+#pragma kernel Mean
+#pragma kernel Variance
 
 #pragma kernel SGD
 #pragma kernel Momentum
@@ -34,22 +46,117 @@ int _BatchSize;
 float _LearningRate, _Momentum;
 
 THREAD
-void MatAdd(
+void CopyMM(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
 )
 {
-  int tx = GTid.x;
-  int ty = GTid.y;
-  int bx = Gid.x;
-  int by = Gid.y;
-  int x = bx * BLOCK_SIZE + tx;
-  int y = by * BLOCK_SIZE + ty;
-
+  int x = Tid.x;
+  int y = Tid.y;
   if (y < _CRows && x < _CCols)
   {
-    _C[y * _CCols + x] = _C[y * _CCols + x] + _B[x];
+    int index = y * _CCols + x;
+    _C[index] = _B[index];
+  }
+}
+
+
+THREAD
+void SqrtMM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = sqrt(_B[index] + EPSILON);
+  }
+}
+
+
+THREAD
+void AddMM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _C[index] + _B[index];
+  }
+}
+
+THREAD
+void SubMM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _C[index] - _B[index];
+  }
+}
+
+
+THREAD
+void AddMV(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _C[index] + _B[x];
+  }
+}
+
+THREAD
+void SubMV(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _C[index] - _B[x];
+  }
+}
+
+THREAD
+void DivMV(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _C[index] / _B[x];
   }
 }
 
@@ -293,6 +400,7 @@ void Exp(
     {
       m = max(m, _X[y * _Cols + i]);
     }
+
     _Y[y * _Cols + x] = exp(_X[y * _Cols + x] - m);
   }
 }
@@ -431,6 +539,47 @@ void Sum(
     acc += _X[y * _Cols + x];
   }
   _Y[x] = acc;
+}
+
+
+[numthreads(128, 1, 1)]
+void Mean(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  if (x >= _Cols)
+    return;
+
+  float acc = 0;
+  for (int y = 0; y < _Rows; y++)
+  {
+    acc += _X[y * _Cols + x];
+  }
+  _Y[x] = acc / _Rows;
+}
+
+
+[numthreads(128, 1, 1)]
+void Variance(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  if (x >= _Cols)
+    return;
+
+  float acc = 0;
+  for (int y = 0; y < _Rows; y++)
+  {
+    float v = _X[y * _Cols + x];
+    acc += v * v;
+  }
+  _Y[x] = acc / _Rows;
 }
 
 

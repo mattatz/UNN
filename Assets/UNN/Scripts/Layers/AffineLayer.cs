@@ -49,8 +49,8 @@ namespace UNN
             // matmul M = input * weights
             MatOperations.Multiply(compute, x, weights, output);
 
-            // matplus M´ = M + biases
-            MatOperations.Add(compute, output.Buffer, biases.Buffer, output.Rows, output.Columns, biases.Rows, biases.Columns);
+            // matplus M´ = M + biases 
+            MatOperations.AddMV(compute, output, biases);
 
             // output.Log();
 
