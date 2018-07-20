@@ -32,6 +32,25 @@ namespace UNN
             OpMM(compute, compute.FindKernel("MulMM"), C, B);
         }
 
+        public static void DivMM(ComputeShader compute, Signal C, Signal B)
+        {
+            OpMM(compute, compute.FindKernel("DivMM"), C, B);
+        }
+
+        public static void MulMMM(ComputeShader compute, Signal A, Signal B, Signal C)
+        {
+            OpMMM(compute, compute.FindKernel("MulMMM"), A, B, C);
+        }
+
+        public static void DivMMM(ComputeShader compute, Signal A, Signal B, Signal C)
+        {
+            OpMMM(compute, compute.FindKernel("DivMMM"), A, B, C);
+        }
+
+        public static void DivMVM(ComputeShader compute, Signal A, Signal B, Signal C)
+        {
+            OpMVM(compute, compute.FindKernel("DivMVM"), A, B, C);
+        }
 
         public static void AddMV(ComputeShader compute, Signal C, Signal B)
         {
@@ -167,6 +186,72 @@ namespace UNN
             compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
             compute.Dispatch(kernel, Mathf.FloorToInt(((int)cCols - 1) / tx) + 1, Mathf.FloorToInt(((int)cRows - 1) / ty) + 1, (int)tz);
         }
+
+        protected static void OpMMM(ComputeShader compute, int kernel, Signal A, Signal B, Signal C)
+        {
+            int aRows = A.Rows, aCols = A.Columns;
+            int bRows = B.Rows, bCols = B.Columns;
+            int cRows = C.Rows, cCols = C.Columns;
+
+            if(aRows != cRows || aCols != cCols)
+            {
+                Debug.LogWarning("A & C does not have same dimensions.");
+            }
+
+            if(cRows != bRows || cCols != bCols)
+            {
+                Debug.LogWarning("B & C does not have same dimensions.");
+            }
+
+            compute.SetInt("_ARows", aRows); compute.SetInt("_ACols", aCols);
+            compute.SetInt("_BRows", bRows); compute.SetInt("_BCols", bCols);
+            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
+
+            compute.SetBuffer(kernel, "_A", A.Buffer);
+            compute.SetBuffer(kernel, "_B", B.Buffer);
+            compute.SetBuffer(kernel, "_C", C.Buffer);
+
+            uint tx, ty, tz;
+            compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
+            compute.Dispatch(kernel, Mathf.FloorToInt(((int)cCols - 1) / tx) + 1, Mathf.FloorToInt(((int)cRows - 1) / ty) + 1, (int)tz);
+        }
+
+        protected static void OpMVM(ComputeShader compute, int kernel, Signal A, Signal B, Signal C)
+        {
+            int aRows = A.Rows, aCols = A.Columns;
+            int bRows = B.Rows, bCols = B.Columns;
+            int cRows = C.Rows, cCols = C.Columns;
+
+            if(aCols != bCols)
+            {
+                Debug.LogWarning("A & B does not have same columns.");
+            }
+
+            if(bRows != 1)
+            {
+                Debug.LogWarning("B rows must be 1.");
+            }
+
+            if(aRows != cRows || aCols != cCols)
+            {
+                Debug.LogWarning("A & C does not have same dimensions.");
+            }
+
+            compute.SetInt("_ARows", aRows); compute.SetInt("_ACols", aCols);
+            compute.SetInt("_BRows", bRows); compute.SetInt("_BCols", bCols);
+            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
+
+            compute.SetBuffer(kernel, "_A", A.Buffer);
+            compute.SetBuffer(kernel, "_B", B.Buffer);
+            compute.SetBuffer(kernel, "_C", C.Buffer);
+
+            uint tx, ty, tz;
+            compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
+            compute.Dispatch(kernel, Mathf.FloorToInt(((int)cCols - 1) / tx) + 1, Mathf.FloorToInt(((int)cRows - 1) / ty) + 1, (int)tz);
+        }
+
+
+
 
         protected static void OpMV(ComputeShader compute, int kernel, Signal C, Signal B)
         {

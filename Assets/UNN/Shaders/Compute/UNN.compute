@@ -3,7 +3,11 @@
 #pragma kernel AddMM
 #pragma kernel SubMM
 #pragma kernel MulMM
+#pragma kernel DivMM
 #pragma kernel SqrtMM
+
+#pragma kernel MulMMM
+#pragma kernel DivMMM
 
 #pragma kernel AddMV
 #pragma kernel SubMV
@@ -50,7 +54,7 @@ int _Rows, _Cols;
 int _BatchSize;
 float _LearningRate, _Momentum;
 
-float _Gamma, _Beta;
+StructuredBuffer<float> _Gamma, _Beta;
 
 THREAD
 void CopyMM(
@@ -131,6 +135,54 @@ void MulMM(
   {
     int index = y * _CCols + x;
     _C[index] = _C[index] * _B[index];
+  }
+}
+
+THREAD
+void DivMM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _C[index] / _B[index];
+  }
+}
+
+THREAD
+void MulMMM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _A[index] * _B[index];
+  }
+}
+
+THREAD
+void DivMMM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _A[index] / _B[index];
   }
 }
 
@@ -672,6 +724,6 @@ void BNForward(
   if (y < _Rows && x < _Cols)
   {
     int idx = y * _Cols + x;
-    _Y[idx] = _Gamma * _Y[idx] + _Beta;
+    _Y[idx] = _Gamma[idx] * _Y[idx] + _Beta[idx];
   }
 }

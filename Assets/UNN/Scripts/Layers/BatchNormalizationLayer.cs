@@ -8,17 +8,16 @@ namespace UNN
     public class BatchNormalizationLayer : Layer
     {
 
-        [SerializeField] protected float gamma, beta, momentum;
+        [SerializeField] protected Signal gamma, beta;
+        [SerializeField] protected float momentum;
 
         [SerializeField] protected int batchSize;
 
         protected Signal xc, xn, std;
         protected Signal runningMean, runningVar;
 
-        public BatchNormalizationLayer(float gamma, float beta, float momentum = 0.9f)
+        public BatchNormalizationLayer(float momentum = 0.9f)
         {
-            this.gamma = gamma;
-            this.beta = beta;
             this.momentum = momentum;
         }
 
@@ -61,10 +60,19 @@ namespace UNN
 
             var output = new Signal(x);
 
+            if(gamma == null)
+            {
+                gamma = new Signal(output);
+                gamma.Init(1f);
+
+                beta = new Signal(output);
+                beta.Init(0f);
+            }
+
             var kernel = compute.FindKernel("BNForward");
             compute.SetBuffer(kernel, "_Y", output.Buffer);
-            compute.SetFloat("_Gamma", gamma);
-            compute.SetFloat("_Beta", beta);
+            compute.SetBuffer(kernel, "_Gamma", gamma.Buffer);
+            compute.SetBuffer(kernel, "_Beta", beta.Buffer);
             Dispatch(compute, kernel, output.Rows, output.Columns);
 
             return output;
@@ -73,14 +81,38 @@ namespace UNN
         public Signal Backward(ComputeShader compute, Signal dout)
         {
             var dbeta = new Signal(1, dout.Columns);
-            var dgamma = new Signal(1, dout.Columns);
+            MatOperations.SumVM(compute, dbeta, dout);
 
+            var dgamma = new Signal(1, dout.Columns);
             MatOperations.MulMM(compute, xn, dout);
             MatOperations.SumVM(compute, dgamma, xn);
 
+            var dxn = new Signal(dout);
+            MatOperations.MulMMM(compute, dout, gamma, dxn);
+
+            var dxc = new Signal(dxn);
+            MatOperations.CopyMM(compute, dxc, dxn);
+            MatOperations.DivMV(compute, dxc, std);
+
+            var dxn_x_xc = new Signal(dxn);
+            MatOperations.MulMMM(compute, dxn, xc, dxn_x_xc);
+
+            var std_x_std = new Signal(std);
+            MatOperations.MulMMM(compute, std, std, std_x_std);
+
+            var dxn_x_xc_div_std_x_std = new Signal(std);
+            MatOperations.DivMVM(compute, dxn_x_xc, std_x_std, dxn_x_xc_div_std_x_std);
+
+            var dstd = new Signal(std);
+            MatOperations.SumVM(compute, dstd, dxn_x_xc_div_std_x_std);
 
             dbeta.Dispose();
             dgamma.Dispose();
+            dxn.Dispose();
+            dxn_x_xc.Dispose();
+            std_x_std.Dispose();
+            dxn_x_xc_div_std_x_std.Dispose();
+            dstd.Dispose();
 
             var dx = new Signal(dout);
 
@@ -98,6 +130,14 @@ namespace UNN
 
         public override void Dispose()
         {
+            if(gamma != null)
+            {
+                gamma.Dispose();
+                beta.Dispose();
+
+                gamma = beta = null;
+            }
+
             if(xc != null)
             {
                 xc.Dispose();
