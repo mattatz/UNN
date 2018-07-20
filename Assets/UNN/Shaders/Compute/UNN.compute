@@ -39,6 +39,7 @@
 #pragma kernel Momentum
 
 #pragma kernel BNMomentum
+#pragma kernel BNXn
 #pragma kernel BNForward
 #pragma kernel BNDVar
 #pragma kernel BNDXc
@@ -46,8 +47,8 @@
 
 #define BLOCK_SIZE 16
 #define THREAD [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
-#define THREAD_VM [numthreads(128, 1, 1)]
-#define THREAD_MV [numthreads(1, 128, 1)]
+#define THREAD_VM [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+#define THREAD_MV [numthreads(128, 1, 1)]
 
 #define EPSILON 1e-16
 
@@ -295,8 +296,7 @@ void DivMVM(
 }
 
 
-
-THREAD
+THREAD_MV 
 void SumMV(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
@@ -317,7 +317,7 @@ void SumMV(
 }
 
 
-THREAD
+THREAD_MV 
 void MeanMV(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
@@ -332,13 +332,13 @@ void MeanMV(
   float acc = 0;
   for (y = 0; y < _BRows; y++)
   {
-    acc += _B[y * _CCols + x];
+    acc += _B[y * _BCols + x];
   }
   _C[x] = acc / _BRows;
 }
 
 
-THREAD
+THREAD_MV 
 void VarianceMV(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
@@ -353,7 +353,7 @@ void VarianceMV(
   float acc = 0;
   for (y = 0; y < _BRows; y++)
   {
-    float v = _B[y * _CCols + x];
+    float v = _B[y * _BCols + x];
     acc += v * v;
   }
   _C[x] = acc / _BRows;
@@ -773,6 +773,23 @@ void BNMomentum(
     _Y[idx] = _Momentum * _Y[idx] + (1.0 - _Momentum) * _X[idx];
   }
 }
+
+THREAD
+void BNXn(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = _X[idx] / sqrt(_T[x] + EPSILON);
+  }
+}
+
 
 THREAD
 void BNForward(

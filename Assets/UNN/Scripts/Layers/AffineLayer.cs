@@ -23,6 +23,8 @@ namespace UNN
             var weights = new float[rows, columns];
             var biases = new float[columns];
 
+            Debug.Log(weight_std);
+
             for(int y = 0; y < rows; y++)
             {
                 for(int x = 0; x < columns; x++)
@@ -40,7 +42,7 @@ namespace UNN
             this.biases = new Signal(biases);
         }
 
-        public override Signal Forward(ComputeShader compute, Signal x)
+        public override Signal Forward(ComputeShader compute, Signal x, bool train)
         {
             this.x = Refresh(x, this.x);
             MatOperations.CopyMM(compute, x, this.x);

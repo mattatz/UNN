@@ -18,7 +18,7 @@ namespace UNN
         {
         }
 
-        public override Signal Forward(ComputeShader compute, Signal x)
+        public override Signal Forward(ComputeShader compute, Signal x, bool train)
         {
             mask = Refresh(x, mask);
 

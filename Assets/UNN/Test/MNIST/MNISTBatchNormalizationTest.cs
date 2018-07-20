@@ -30,8 +30,8 @@ namespace UNN.Test
 
         protected override void Update()
         {
-            // if(training && iter < iterations)
-            if(training && iter < 1)
+            if(training && iter < iterations)
+            // if(training && iter < 1)
             {
                 iter++;
                 Signal input, answer;

@@ -300,7 +300,7 @@ namespace UNN
                 Debug.LogWarning("C rows must be 1.");
             }
 
-            if(cCols != bCols)
+            if(bCols != cCols)
             {
                 Debug.LogWarning("B & C does not same columns.");
             }

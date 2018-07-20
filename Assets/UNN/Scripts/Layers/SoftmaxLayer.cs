@@ -14,7 +14,7 @@ namespace UNN
         {
         }
 
-        public override Signal Forward(ComputeShader compute, Signal x)
+        public override Signal Forward(ComputeShader compute, Signal x, bool train)
         {
             var temp = new Signal(x.Rows, x.Columns);
 

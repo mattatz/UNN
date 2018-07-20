@@ -9,9 +9,9 @@ namespace UNN
 
     public abstract class Network : IDisposable
     {
-        public abstract Signal Predict(ComputeShader compute, Signal input);
+        public abstract Signal Predict(ComputeShader compute, Signal input, bool train);
 
-        public abstract float Loss(ComputeShader compute, Signal signal, Signal answer);
+        public abstract float Loss(ComputeShader compute, Signal signal, Signal answer, bool train);
 
         public abstract float Accuracy(ComputeShader compute, Signal input, Signal answer);
 

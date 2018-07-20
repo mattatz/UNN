@@ -16,7 +16,8 @@ namespace UNN.Test
         [SerializeField, Range(1000, 10000)] protected int iterations = 10000;
         [SerializeField, Range(32, 128)] protected int batchSize = 100;
         [SerializeField, Range(100, 500)] protected int measure = 500;
-        [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.1f;
+        [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.01f;
+        [SerializeField, Range(1, 60)] protected int frame = 1;
 
         [SerializeField] protected string filename = "MNISTNetwork.json";
         [SerializeField] protected bool load = true;
@@ -76,7 +77,7 @@ namespace UNN.Test
 
         protected virtual void Update()
         {
-            if(training && iter < iterations)
+            if(training && Time.frameCount % frame == 0 && iter < iterations)
             {
                 iter++;
                 Signal input, answer;
@@ -99,8 +100,7 @@ namespace UNN.Test
 
         public void Evaluate(Signal input)
         {
-            var output = network.Predict(compute, input);
-            // var output = Predict(input);
+            var output = network.Predict(compute, input, false);
             float[,] result = output.GetData();
             output.Dispose();
 

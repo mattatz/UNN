@@ -30,15 +30,15 @@ namespace UNN.Test
             this.outputSize = outputSize;
 
 
-            affine1 = new AffineLayer(inputSize, hiddenSize);
+            affine1 = new AffineLayer(inputSize, hiddenSize, Mathf.Sqrt(2.0f / inputSize));
             bn1 = new BatchNormalizationLayer(hiddenSize, hiddenSize);
             relu1 = new ReLULayer();
 
-            affine2 = new AffineLayer(hiddenSize, hiddenSize);
+            affine2 = new AffineLayer(hiddenSize, hiddenSize, Mathf.Sqrt(2.0f / hiddenSize));
             bn2 = new BatchNormalizationLayer(hiddenSize, hiddenSize);
             relu2 = new ReLULayer();
 
-            affine3 = new AffineLayer(hiddenSize, outputSize);
+            affine3 = new AffineLayer(hiddenSize, outputSize, Mathf.Sqrt(2.0f / hiddenSize));
             softmax = new SoftmaxLayer();
 
             optimizer = new MomentumOptimizer(0.9f);
@@ -46,7 +46,7 @@ namespace UNN.Test
 
         public override float Accuracy(ComputeShader compute, Signal input, Signal answer)
         {
-            var output = Predict(compute, input);
+            var output = Predict(compute, input, false);
             float acc = UNN.Accuracy.Calculate(compute, input, output, answer);
             output.Dispose();
             return acc;
@@ -54,7 +54,7 @@ namespace UNN.Test
 
         public override void Gradient(ComputeShader compute, Signal input, Signal answer)
         {
-            Loss(compute, input, answer);
+            Loss(compute, input, answer, true);
 
             var layers = new List<Layer>() {
                 affine1, bn1, relu1,
@@ -65,38 +65,41 @@ namespace UNN.Test
 
             layers.Reverse();
 
+            Debug.Log("Gradient");
+
             var signal = answer;
             layers.ForEach(layer =>
             {
                 var tmp = signal;
                 signal = layer.Backward(compute, tmp);
                 tmp.Dispose();
+
+                signal.Log(layer.GetType().ToString());
             });
             signal.Dispose();
         }
 
-        public override void Learn(ComputeShader compute, float rate = 0.1F)
+        public override void Learn(ComputeShader compute, float rate = 0.1f)
         {
-            affine1.Learn(optimizer, compute, rate);
-            bn1.Learn(optimizer, compute, rate);
-
-            affine2.Learn(optimizer, compute, rate);
-            bn2.Learn(optimizer, compute, rate);
-
-            affine3.Learn(optimizer, compute, rate);
+            var layers = new List<TrainLayer>() {
+                affine1, bn1,
+                affine2, bn2,
+                affine3,
+            };
+            layers.ForEach(trLayer => trLayer.Learn(optimizer, compute, rate));
         }
 
-        public override float Loss(ComputeShader compute, Signal signal, Signal answer)
+        public override float Loss(ComputeShader compute, Signal signal, Signal answer, bool train)
         {
-            var predictSig = Predict(compute, signal);
+            var predictSig = Predict(compute, signal, train);
 
-            var softmaxSig = softmax.Forward(compute, predictSig);
+            var softmaxSig = softmax.Forward(compute, predictSig, train);
             predictSig.Dispose();
 
             return CrossEntropyError.Loss(compute, softmaxSig, answer);
         }
 
-        public override Signal Predict(ComputeShader compute, Signal input)
+        public override Signal Predict(ComputeShader compute, Signal input, bool train)
         {
             var layers = new List<Layer>() {
                 affine1, bn1, relu1,
@@ -104,10 +107,14 @@ namespace UNN.Test
                 affine3,
             };
 
+            // Debug.Log("Predict");
+
             layers.ForEach(layer =>
             {
+                // input.Log(layer.GetType().ToString());
+
                 var tmp = input;
-                input = layer.Forward(compute, tmp);
+                input = layer.Forward(compute, tmp, train);
                 tmp.Dispose();
             });
 

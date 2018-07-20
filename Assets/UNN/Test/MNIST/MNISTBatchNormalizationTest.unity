@@ -236,9 +236,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   compute: {fileID: 7200000, guid: bef4499de4c55f4409fb8b3587582e64, type: 3}
   iterations: 1000
-  batchSize: 100
+  batchSize: 64
   measure: 100
-  learningRate: 0.1
+  learningRate: 0.01
+  frame: 60
   filename: MNISTBNNetwork.json
   load: 0
   input: {fileID: 833725051}

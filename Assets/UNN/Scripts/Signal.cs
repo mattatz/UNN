@@ -81,7 +81,7 @@ namespace UNN
             float[,] value = GetData();
 
             var output = new string[rows + 1];
-            output[0] = header + " [" + rows + ", " + columns + "]";
+            output[0] = header + (header.Length > 0 ? " " : "") + " [" + rows + ", " + columns + "]";
 
             bool isNaN = false;
             for(int y = 0; y < rows; y++)

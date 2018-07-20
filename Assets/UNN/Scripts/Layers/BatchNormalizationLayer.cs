@@ -35,38 +35,48 @@ namespace UNN
             runningVar.Init(0f);
         }
 
-        public override Signal Forward(ComputeShader compute, Signal x)
+        public override Signal Forward(ComputeShader compute, Signal x, bool train)
         {
-            var mu = new Signal(1, x.Columns);
-            MatOperations.MeanMV(compute, x, mu);
+            if(train)
+            {
+                var mu = new Signal(1, x.Columns);
+                MatOperations.MeanMV(compute, x, mu);
+                x.Log("x");
+                mu.Log("mu");
 
-            x.Log("x");
-            mu.Log("mu");
+                xc = Refresh(x, xc); // xc = x - mu
+                MatOperations.SubMVM(compute, x, mu, xc);
+                xc.Log("xc");
 
-            xc = Refresh(x, xc); // xc = x - mu
-            MatOperations.SubMVM(compute, x, mu, xc);
+                var variance = new Signal(1, xc.Columns);
+                MatOperations.VarianceMV(compute, xc, variance);
+                variance.Log("variance");
 
-            xc.Log("xc");
+                std = Refresh(variance, std);
+                MatOperations.SqrtMM(compute, variance, std);
+                std.Log("std");
 
-            var variance = new Signal(1, xc.Columns);
-            MatOperations.VarianceMV(compute, xc, variance);
+                xn = Refresh(xc, xn); // xn = xc / std
+                MatOperations.DivMVM(compute, xc, std, xn);
 
-            variance.Log("variance");
+                batchSize = x.Rows;
 
-            std = Refresh(variance, std);
-            MatOperations.SqrtMM(compute, variance, std);
+                Momentum(compute, mu, runningMean);
+                Momentum(compute, variance, runningVar);
 
-            std.Log("std");
+                mu.Dispose();
+                variance.Dispose();
+            } else
+            {
+                xc = Refresh(x, xc); // xc = x - runningMean
+                MatOperations.SubMVM(compute, x, runningMean, xc);
+                x.Log("x");
+                runningMean.Log("runningMean");
+                // xn.Log("xn");
 
-            xn = Refresh(xc, xn); // xn = xc / std
-            MatOperations.DivMVM(compute, xc, std, xn);
-
-            xn.Log("xn");
-
-            batchSize = x.Rows;
-
-            Momentum(compute, mu, runningMean);
-            Momentum(compute, variance, runningVar);
+                xn = Refresh(xc, xn); // xn = xc / sqrt(runningVar + epsilon)
+                Xn(compute, xc, runningVar, xn);
+            }
 
             var output = new Signal(xn);
 
@@ -76,11 +86,6 @@ namespace UNN
             compute.SetBuffer(kernel, "_Beta", beta.Buffer);
             compute.SetBuffer(kernel, "_Y", output.Buffer);
             Dispatch(compute, kernel, output.Rows, output.Columns);
-
-            output.Log("output");
-
-            mu.Dispose();
-            variance.Dispose();
 
             return output;
         }
@@ -97,9 +102,12 @@ namespace UNN
             var dxn = new Signal(dout);
             MatOperations.MulMVM(compute, dout, gamma, dxn);
 
+            // dout.Log("dout");
+            // gamma.Log("gamma");
+            // dxn.Log("dxn");
+
             var dxc = new Signal(dxn);
-            MatOperations.CopyMM(compute, dxn, dxc);
-            MatOperations.DivVM(compute, std, dxc);
+            MatOperations.DivMVM(compute, dxn, std, dxc);
 
             var dxn_x_xc = new Signal(dxn);
             MatOperations.MulMMM(compute, dxn, xc, dxn_x_xc);
@@ -123,6 +131,9 @@ namespace UNN
 
             var dx = new Signal(dout);
             DX(compute, dxc, dmu, dx, 1f / batchSize);
+
+            // dxc.Log("dxc");
+            // dmu.Log("dmu");
 
             dxn.Dispose();
             dxc.Dispose();
@@ -148,6 +159,15 @@ namespace UNN
             compute.SetBuffer(kernel, "_X", X.Buffer);
             compute.SetBuffer(kernel, "_Y", Y.Buffer);
             compute.SetFloat("_Momentum", momentum);
+            Dispatch(compute, kernel, Y.Rows, Y.Columns);
+        }
+
+        protected void Xn(ComputeShader compute, Signal X, Signal T, Signal Y)
+        {
+            var kernel = compute.FindKernel("BNXn");
+            compute.SetBuffer(kernel, "_X", X.Buffer);
+            compute.SetBuffer(kernel, "_T", T.Buffer);
+            compute.SetBuffer(kernel, "_Y", Y.Buffer);
             Dispatch(compute, kernel, Y.Rows, Y.Columns);
         }
 
