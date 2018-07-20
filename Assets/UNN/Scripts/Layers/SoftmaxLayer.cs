@@ -35,7 +35,7 @@ namespace UNN
             return y;
         }
 
-        public Signal Backward(ComputeShader compute, Signal answer)
+        public override Signal Backward(ComputeShader compute, Signal answer)
         {
             int batchSize = answer.Rows;
             var output = new Signal(answer.Rows, answer.Columns);

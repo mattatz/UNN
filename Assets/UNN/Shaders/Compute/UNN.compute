@@ -13,6 +13,9 @@
 #pragma kernel SubVM
 #pragma kernel DivVM
 
+#pragma kernel SubMVM
+#pragma kernel DivMVM
+
 #pragma kernel SumMV
 #pragma kernel MeanMV
 #pragma kernel VarianceMV
@@ -235,6 +238,40 @@ void DivVM(
     _C[index] = _C[index] / _B[x];
   }
 }
+
+
+THREAD
+void SubMVM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _A[index] - _B[x];
+  }
+}
+
+THREAD
+void DivMVM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _A[index] / _B[x];
+  }
+}
+
 
 
 THREAD
@@ -510,7 +547,7 @@ void ReLUBackward(
   if (y < _Rows && x < _Cols)
   {
     int idx = y * _Cols + x;
-    _Y[idx] = _Y[idx] * step(EPSILON, _X[idx]);
+    _Y[idx] = _X[idx] * step(EPSILON, _T[idx]);
   }
 }
 
@@ -724,6 +761,6 @@ void BNForward(
   if (y < _Rows && x < _Cols)
   {
     int idx = y * _Cols + x;
-    _Y[idx] = _Gamma[idx] * _Y[idx] + _Beta[idx];
+    _Y[idx] = _Gamma[x] * _Y[idx] + _Beta[x];
   }
 }

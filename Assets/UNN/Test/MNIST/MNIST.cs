@@ -28,7 +28,7 @@ namespace UNN.Test
 
         protected Vector2 scrollPosition = Vector2.zero;
 
-        protected MNISTNetwork network;
+        protected Network network;
         protected string path;
 
         [SerializeField] protected bool training;
@@ -47,6 +47,19 @@ namespace UNN.Test
 
             // images = trainDataset.Digits.Take(128).Select(digit => digit.ToTexture(trainDataset.Rows, trainDataset.Columns)).ToList();
 
+            SetupNetwork();
+
+            /*
+            Signal input, answer;
+            trainDataset.GetSignals(new List<Digit>() { trainDataset.Digits[0] }, out input, out answer);
+            input.LogMNIST();
+            input.Dispose();
+            answer.Dispose();
+            */
+        }
+
+        protected virtual void SetupNetwork()
+        {
             var inputSize = trainDataset.Rows * trainDataset.Columns;
 
             path = Path.Combine(Application.persistentDataPath, filename);
@@ -59,22 +72,20 @@ namespace UNN.Test
             {
                 network = new MNISTNetwork(inputSize, 50, 10);
             }
-
-            /*
-            Signal input, answer;
-            trainDataset.GetSignals(new List<Digit>() { trainDataset.Digits[0] }, out input, out answer);
-            input.LogMNIST();
-            input.Dispose();
-            answer.Dispose();
-            */
         }
 
-        protected void Update()
+        protected virtual void Update()
         {
             if(training && iter < iterations)
             {
                 iter++;
-                network.Train(compute, trainDataset, batchSize, learningRate);
+                Signal input, answer;
+                trainDataset.GetSubSignals(batchSize, out input, out answer);
+                network.Gradient(compute, input, answer);
+                network.Learn(compute, learningRate);
+
+                input.Dispose();
+                answer.Dispose();
                 if(iter % measure == 0)
                 {
                     Signal testInput, testAnswer;

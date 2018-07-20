@@ -5,7 +5,7 @@ using UnityEngine;
 namespace UNN
 {
 
-    public class BatchNormalizationLayer : Layer
+    public class BatchNormalizationLayer : InnerLayer
     {
 
         [SerializeField] protected Signal gamma, beta;
@@ -16,29 +16,31 @@ namespace UNN
         protected Signal xc, xn, std;
         protected Signal runningMean, runningVar;
 
-        public BatchNormalizationLayer(float momentum = 0.9f)
+        public BatchNormalizationLayer(int rows, int columns, float momentum = 0.9f) : base(rows, columns)
         {
             this.momentum = momentum;
+
+            gamma = new Signal(1, columns);
+            gamma.Init(1f);
+
+            beta = new Signal(1, columns);
+            beta.Init(0f);
+
+            runningMean = new Signal(1, columns);
+            runningMean.Init(0f);
+
+            runningVar = new Signal(1, columns);
+            runningVar.Init(0f);
         }
 
         public override Signal Forward(ComputeShader compute, Signal x)
         {
 
-            if(runningMean == null)
-            {
-                runningMean = new Signal(1, x.Columns);
-                runningMean.Init(0f);
-
-                runningVar = new Signal(1, x.Columns);
-                runningVar.Init(0f);
-            }
-
             var mu = new Signal(1, x.Columns);
-            MatOperations.MeanMV(compute, mu, x);
+            MatOperations.MeanMV(compute, x, mu);
 
             xc = Refresh(x, xc); // xc = x - mu
-            MatOperations.CopyMM(compute, x, xc);
-            MatOperations.SubVM(compute, mu, xc);
+            MatOperations.SubMVM(compute, x, mu, xc);
 
             var variance = new Signal(1, xc.Columns);
             MatOperations.VarianceMV(compute, xc, variance);
@@ -46,28 +48,15 @@ namespace UNN
             std = Refresh(variance, std);
             MatOperations.SqrtMM(compute, variance, std);
 
-            xn = Refresh(xc, xn);
-            MatOperations.CopyMM(compute, xc, xn);
-            MatOperations.DivVM(compute, std, xn);
+            xn = Refresh(xc, xn); // xn = xc / std
+            MatOperations.DivMVM(compute, xc, std, xn);
 
             batchSize = x.Rows;
 
-            Momentum(compute, runningMean, mu);
-            Momentum(compute, runningVar, variance);
-
-            mu.Dispose();
-            variance.Dispose();
+            Momentum(compute, mu, runningMean);
+            Momentum(compute, variance, runningVar);
 
             var output = new Signal(x);
-
-            if(gamma == null)
-            {
-                gamma = new Signal(output);
-                gamma.Init(1f);
-
-                beta = new Signal(output);
-                beta.Init(0f);
-            }
 
             var kernel = compute.FindKernel("BNForward");
             compute.SetBuffer(kernel, "_Y", output.Buffer);
@@ -75,10 +64,13 @@ namespace UNN
             compute.SetBuffer(kernel, "_Beta", beta.Buffer);
             Dispatch(compute, kernel, output.Rows, output.Columns);
 
+            mu.Dispose();
+            variance.Dispose();
+
             return output;
         }
 
-        public Signal Backward(ComputeShader compute, Signal dout)
+        public override Signal Backward(ComputeShader compute, Signal dout)
         {
             var dbeta = new Signal(1, dout.Columns);
             MatOperations.SumMV(compute, dout, dbeta);
@@ -119,11 +111,11 @@ namespace UNN
             return dx;
         }
 
-        protected void Momentum(ComputeShader compute, Signal Y, Signal X)
+        protected void Momentum(ComputeShader compute, Signal X, Signal Y)
         {
             var kernel = compute.FindKernel("BNMomentum");
-            compute.SetBuffer(kernel, "_Y", Y.Buffer);
             compute.SetBuffer(kernel, "_X", X.Buffer);
+            compute.SetBuffer(kernel, "_Y", Y.Buffer);
             compute.SetFloat("_Momentum", momentum);
             Dispatch(compute, kernel, Y.Rows, Y.Columns);
         }

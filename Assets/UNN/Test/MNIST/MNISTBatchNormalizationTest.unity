@@ -204,7 +204,7 @@ GameObject:
   - component: {fileID: 420134338}
   - component: {fileID: 420134339}
   m_Layer: 0
-  m_Name: MNIST
+  m_Name: MNISTBatchNormalizationTest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -231,15 +231,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 420134337}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: be4f185b3ff9c984097e508816d1d9b2, type: 3}
+  m_Script: {fileID: 11500000, guid: baf8ddd8c7ddec64aa6e813b95601857, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   compute: {fileID: 7200000, guid: bef4499de4c55f4409fb8b3587582e64, type: 3}
-  iterations: 10000
+  iterations: 1000
   batchSize: 100
   measure: 100
   learningRate: 0.1
-  filename: MNISTNetwork.json
+  filename: MNISTBNNetwork.json
   load: 0
   input: {fileID: 833725051}
   training: 1

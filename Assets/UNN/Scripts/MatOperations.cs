@@ -47,10 +47,18 @@ namespace UNN
             OpMMM(compute, compute.FindKernel("DivMMM"), A, B, C);
         }
 
+
+        public static void SubMVM(ComputeShader compute, Signal A, Signal B, Signal C)
+        {
+            OpMVM(compute, compute.FindKernel("SubMVM"), A, B, C);
+        }
+
         public static void DivMVM(ComputeShader compute, Signal A, Signal B, Signal C)
         {
             OpMVM(compute, compute.FindKernel("DivMVM"), A, B, C);
         }
+
+
 
         public static void AddVM(ComputeShader compute, Signal B, Signal C)
         {

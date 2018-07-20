@@ -16,6 +16,7 @@ namespace UNN
         }
 
         public abstract Signal Forward(ComputeShader compute, Signal x);
+        public abstract Signal Backward(ComputeShader compute, Signal dout);
 
         protected Signal Refresh(Signal src, Signal dst)
         {

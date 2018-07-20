@@ -27,20 +27,25 @@ namespace UNN
             compute.SetBuffer(kernel, "_Y", mask.Buffer);
             Dispatch(compute, kernel, mask.Rows, mask.Columns);
 
-            return mask;
+            var output = new Signal(mask);
+            MatOperations.CopyMM(compute, mask, output);
+            return output;
         }
 
-        public Signal Backward(ComputeShader compute, Signal dout)
+        public override Signal Backward(ComputeShader compute, Signal dout)
         {
+            var output = new Signal(dout);
+
             var kernel = compute.FindKernel("ReLUBackward");
-            compute.SetBuffer(kernel, "_X", mask.Buffer);
-            compute.SetBuffer(kernel, "_Y", dout.Buffer);
-            Dispatch(compute, kernel, dout.Rows, dout.Columns);
+            compute.SetBuffer(kernel, "_X", dout.Buffer);
+            compute.SetBuffer(kernel, "_T", mask.Buffer);
+            compute.SetBuffer(kernel, "_Y", output.Buffer);
+            Dispatch(compute, kernel, output.Rows, output.Columns);
 
             // mask.Log();
             // dout.Log();
 
-            return dout;
+            return output;
         }
 
         public override void Dispose()

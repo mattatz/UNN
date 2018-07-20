@@ -1,5 +1,8 @@
-﻿using System.Collections;
+﻿using System;
+using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
+
 using UnityEngine;
 
 namespace UNN.Test
@@ -34,18 +37,23 @@ namespace UNN.Test
             optim2 = new MomentumOptimizer(affine2, 0.9f);
         }
 
-        public Signal Predict(ComputeShader compute, Signal input)
+        public override Signal Predict(ComputeShader compute, Signal input)
         {
-            var s0 = affine1.Forward(compute, input);
-            var s1 = relu.Forward(compute, s0);
-            var s2 = affine2.Forward(compute, s1);
+            var layers = new List<Layer>() {
+                affine1, relu, affine2,
+            };
 
-            s0.Dispose();
+            layers.ForEach(layer =>
+            {
+                var tmp = input;
+                input = layer.Forward(compute, input);
+                tmp.Dispose();
+            });
 
-            return s2;
+            return input;
         }
 
-        protected float Loss(ComputeShader compute, Signal signal, Signal answer)
+        public override float Loss(ComputeShader compute, Signal signal, Signal answer)
         {
             var predictSig = Predict(compute, signal);
 
@@ -55,18 +63,7 @@ namespace UNN.Test
             return CrossEntropyError.Loss(compute, softmaxSig, answer);
         }
 
-        public void Train(ComputeShader compute, DigitDataset dataset, int batchSize, float learningRate)
-        {
-            Signal input, answer;
-            dataset.GetSubSignals(batchSize, out input, out answer);
-            Gradient(compute, input, answer);
-            Learn(compute, learningRate);
-
-            input.Dispose();
-            answer.Dispose();
-        }
-
-        public float Accuracy(ComputeShader compute, Signal input, Signal answer)
+        public override float Accuracy(ComputeShader compute, Signal input, Signal answer)
         {
             var output = Predict(compute, input);
             float acc = UNN.Accuracy.Calculate(compute, input, output, answer);
@@ -74,23 +71,27 @@ namespace UNN.Test
             return acc;
         }
 
-        protected void Gradient(ComputeShader compute, Signal input, Signal answer)
+        public override void Gradient(ComputeShader compute, Signal input, Signal answer)
         {
             Loss(compute, input, answer);
 
-            var softmaxSig = softmax.Backward(compute, answer);
-            // softmaxSig.Log();
+            var layers = new List<Layer>() {
+                affine1, relu, affine2, softmax
+            };
 
-            var a2Sig = affine2.Backward(compute, softmaxSig);
-            a2Sig = relu.Backward(compute, a2Sig);
-            var a1Sig = affine1.Backward(compute, a2Sig);
+            layers.Reverse();
 
-            softmaxSig.Dispose();
-            a2Sig.Dispose();
-            a1Sig.Dispose();
+            var signal = answer;
+            layers.ForEach(layer =>
+            {
+                var tmp = signal;
+                signal = layer.Backward(compute, tmp);
+                tmp.Dispose();
+            });
+            signal.Dispose();
         }
 
-        protected void Learn(ComputeShader compute, float rate = 0.1f)
+        public override void Learn(ComputeShader compute, float rate = 0.1f)
         {
             affine1.Learn(optim1, compute, rate);
             affine2.Learn(optim2, compute, rate);

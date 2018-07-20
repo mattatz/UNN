@@ -42,7 +42,8 @@ namespace UNN
 
         public override Signal Forward(ComputeShader compute, Signal x)
         {
-            this.x = x;
+            this.x = Refresh(x, this.x);
+            MatOperations.CopyMM(compute, x, this.x);
 
             var output = new Signal(x.Rows, weights.Columns);
 
@@ -57,7 +58,7 @@ namespace UNN
             return output;
         }
         
-        public Signal Backward(ComputeShader compute, Signal dout)
+        public override Signal Backward(ComputeShader compute, Signal dout)
         {
             var dx = new Signal(dout.Rows, weights.Rows);
             MatOperations.MultiplyMT(compute, dout, weights, dx);
