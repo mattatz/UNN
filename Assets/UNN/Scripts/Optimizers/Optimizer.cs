@@ -10,9 +10,9 @@ namespace UNN
     [System.Serializable]
     public abstract class Optimizer : IDisposable {
 
-        public Optimizer(AffineLayer layer) { }
+        public Optimizer() { }
 
-        public abstract void Update(ComputeShader compute, float rate, Signal weights, Signal dW, Signal biases, Signal dB);
+        public abstract void Update(ComputeShader compute, float rate, Signal gamma, Signal dGamma);
 
         protected void Dispatch(ComputeShader compute, int kernel, int rows, int columns)
         {

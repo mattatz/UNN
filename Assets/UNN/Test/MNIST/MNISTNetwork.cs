@@ -20,7 +20,7 @@ namespace UNN.Test
         [SerializeField] protected AffineLayer affine2;
         [SerializeField] protected SoftmaxLayer softmax;
 
-        [SerializeField] protected MomentumOptimizer optim1, optim2;
+        [SerializeField] protected MomentumOptimizer optimizer;
 
         public MNISTNetwork(int inputSize, int hiddenSize, int outputSize) : base()
         {
@@ -33,8 +33,7 @@ namespace UNN.Test
             affine2 = new AffineLayer(hiddenSize, outputSize);
             softmax = new SoftmaxLayer();
 
-            optim1 = new MomentumOptimizer(affine1, 0.9f);
-            optim2 = new MomentumOptimizer(affine2, 0.9f);
+            optimizer = new MomentumOptimizer(0.9f);
         }
 
         public override Signal Predict(ComputeShader compute, Signal input)
@@ -46,7 +45,7 @@ namespace UNN.Test
             layers.ForEach(layer =>
             {
                 var tmp = input;
-                input = layer.Forward(compute, input);
+                input = layer.Forward(compute, tmp);
                 tmp.Dispose();
             });
 
@@ -93,8 +92,8 @@ namespace UNN.Test
 
         public override void Learn(ComputeShader compute, float rate = 0.1f)
         {
-            affine1.Learn(optim1, compute, rate);
-            affine2.Learn(optim2, compute, rate);
+            affine1.Learn(optimizer, compute, rate);
+            affine2.Learn(optimizer, compute, rate);
         }
 
         public override void Dispose()
@@ -104,8 +103,7 @@ namespace UNN.Test
             affine2.Dispose();
             softmax.Dispose();
 
-            optim1.Dispose();
-            optim2.Dispose();
+            optimizer.Dispose();
         }
 
     }

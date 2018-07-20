@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,44 +10,45 @@ namespace UNN
     public class MomentumOptimizer : Optimizer
     {
 
-        [SerializeField] protected Signal vW, vB;
+        [SerializeField] protected Dictionary<Signal, Signal> velocity;
         [SerializeField] protected float momentum;
 
-        public MomentumOptimizer(AffineLayer layer, float momentum = 0.9f) : base(layer)
+        public MomentumOptimizer(float m = 0.9f) : base()
         {
-            this.momentum = momentum;
-            vW = new Signal(layer.Weights);
-            vW.Init(0f);
-
-            vB = new Signal(layer.Biases);
-            vB.Init(0f);
+            momentum = m;
+            velocity = new Dictionary<Signal, Signal>();
         }
-
-        public override void Update(ComputeShader compute, float rate, Signal weights, Signal dW, Signal biases, Signal dB)
+        
+        public override void Update(ComputeShader compute, float rate, Signal gamma, Signal dGamma)
         {
             var kernel = compute.FindKernel("Momentum");
 
             compute.SetFloat("_LearningRate", rate);
             compute.SetFloat("_Momentum", momentum);
 
-            compute.SetBuffer(kernel, "_T", dW.Buffer);
-            compute.SetBuffer(kernel, "_X", vW.Buffer);
-            compute.SetBuffer(kernel, "_Y", weights.Buffer);
-            Dispatch(compute, kernel, weights.Rows, weights.Columns);
-
-            compute.SetBuffer(kernel, "_T", dB.Buffer);
-            compute.SetBuffer(kernel, "_X", vB.Buffer);
-            compute.SetBuffer(kernel, "_Y", biases.Buffer);
-            Dispatch(compute, kernel, biases.Rows, biases.Columns);
+            Signal vGamma;
+            if(!velocity.ContainsKey(gamma))
+            {
+                vGamma = new Signal(gamma);
+                vGamma.Init(0f);
+                velocity.Add(gamma, vGamma);
+            } else
+            {
+                vGamma = velocity[gamma];
+            }
+            compute.SetBuffer(kernel, "_X", vGamma.Buffer);
+            compute.SetBuffer(kernel, "_T", dGamma.Buffer);
+            compute.SetBuffer(kernel, "_Y", gamma.Buffer);
+            Dispatch(compute, kernel, gamma.Rows, gamma.Columns);
         }
 
         public override void Dispose()
         {
-            if(vW != null)
+            if(velocity != null)
             {
-                vW.Dispose();
-                vB.Dispose();
-                vW = vB = null;
+                velocity.Values.ToList().ForEach(v => v.Dispose());
+                velocity.Clear();
+                velocity = null;
             }
         }
 

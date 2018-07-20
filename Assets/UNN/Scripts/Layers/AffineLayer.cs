@@ -8,7 +8,7 @@ namespace UNN
 {
 
     [System.Serializable]
-    public class AffineLayer : InnerLayer
+    public class AffineLayer : TrainLayer
     {
         public Signal Weights { get { return weights; } }
         public Signal Biases { get { return biases; } }
@@ -77,9 +77,10 @@ namespace UNN
             return dx;
         }
 
-        public void Learn(Optimizer optimizer, ComputeShader compute, float rate)
+        public override void Learn(Optimizer optimizer, ComputeShader compute, float rate)
         {
-            optimizer.Update(compute, rate, weights, dW, biases, dB);
+            optimizer.Update(compute, rate, weights, dW);
+            optimizer.Update(compute, rate, biases, dB);
         }
 
         public override void Dispose()

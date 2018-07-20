@@ -37,7 +37,7 @@ namespace UNN.Test
                 Signal input, answer;
                 trainDataset.GetSubSignals(batchSize, out input, out answer);
                 network.Gradient(compute, input, answer);
-                // network.Learn(compute, learningRate);
+                network.Learn(compute, learningRate);
 
                 input.Dispose();
                 answer.Dispose();

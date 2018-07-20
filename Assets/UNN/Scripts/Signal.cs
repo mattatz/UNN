@@ -76,24 +76,33 @@ namespace UNN
             return value;
         }
 
-        public void Log()
+        public void Log(string header = "")
         {
             float[,] value = GetData();
 
             var output = new string[rows + 1];
-            output[0] = "[" + rows + ", " + columns + "]";
+            output[0] = header + " [" + rows + ", " + columns + "]";
 
+            bool isNaN = false;
             for(int y = 0; y < rows; y++)
             {
                 string[] row = new string[columns];
                 for(int x = 0; x < columns; x++)
                 {
-                    row[x] = value[y, x].ToString("0.00000");
+                    float v = value[y, x];
+                    isNaN |= float.IsNaN(v);
+                    row[x] = v.ToString("0.00000");
                 }
                 output[y + 1] = string.Join(",", row);
             }
 
-            Debug.Log(string.Join("\n", output));
+            if(isNaN)
+            {
+                Debug.LogWarning(string.Join("\n", output));
+            } else
+            {
+                Debug.Log(string.Join("\n", output));
+            }
         }
 
         public void LogMNIST(float threshold = 0.5f)

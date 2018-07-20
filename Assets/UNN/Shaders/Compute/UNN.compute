@@ -14,6 +14,7 @@
 #pragma kernel DivVM
 
 #pragma kernel SubMVM
+#pragma kernel MulMVM
 #pragma kernel DivMVM
 
 #pragma kernel SumMV
@@ -39,6 +40,9 @@
 
 #pragma kernel BNMomentum
 #pragma kernel BNForward
+#pragma kernel BNDVar
+#pragma kernel BNDXc
+#pragma kernel BNDX
 
 #define BLOCK_SIZE 16
 #define THREAD [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
@@ -59,6 +63,7 @@ int _BatchSize;
 float _LearningRate, _Momentum;
 
 StructuredBuffer<float> _Gamma, _Beta;
+float _Sigma, _Rho, _Iota;
 
 THREAD
 void CopyMM(
@@ -257,6 +262,23 @@ void SubMVM(
 }
 
 THREAD
+void MulMVM(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _CRows && x < _CCols)
+  {
+    int index = y * _CCols + x;
+    _C[index] = _A[index] * _B[x];
+  }
+}
+
+
+THREAD
 void DivMVM(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
@@ -282,13 +304,14 @@ void SumMV(
 )
 {
   int x = Tid.x;
-  if (x >= _Cols)
+  int y = Tid.y;
+  if (x >= _CCols || y >= _CRows)
     return;
 
   float acc = 0;
-  for (int y = 0; y < _Rows; y++)
+  for (y = 0; y < _BRows; y++)
   {
-    acc += _B[y * _Cols + x];
+    acc += _B[y * _CCols + x];
   }
   _C[x] = acc;
 }
@@ -302,15 +325,16 @@ void MeanMV(
 )
 {
   int x = Tid.x;
-  if (x >= _Cols)
+  int y = Tid.y;
+  if (x >= _CCols || y >= _CRows)
     return;
 
   float acc = 0;
-  for (int y = 0; y < _Rows; y++)
+  for (y = 0; y < _BRows; y++)
   {
-    acc += _B[y * _Cols + x];
+    acc += _B[y * _CCols + x];
   }
-  _C[x] = acc / _Rows;
+  _C[x] = acc / _BRows;
 }
 
 
@@ -322,16 +346,17 @@ void VarianceMV(
 )
 {
   int x = Tid.x;
-  if (x >= _Cols)
+  int y = Tid.y;
+  if (x >= _CCols || y >= _CRows)
     return;
 
   float acc = 0;
-  for (int y = 0; y < _Rows; y++)
+  for (y = 0; y < _BRows; y++)
   {
-    float v = _B[y * _Cols + x];
+    float v = _B[y * _CCols + x];
     acc += v * v;
   }
-  _C[x] = acc / _Rows;
+  _C[x] = acc / _BRows;
 }
 
 
@@ -761,6 +786,54 @@ void BNForward(
   if (y < _Rows && x < _Cols)
   {
     int idx = y * _Cols + x;
-    _Y[idx] = _Gamma[x] * _Y[idx] + _Beta[x];
+    _Y[idx] = _Gamma[x] * _X[idx] + _Beta[x];
+  }
+}
+
+THREAD
+void BNDVar(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = -0.5 * _X[idx] / _T[idx];
+  }
+}
+
+THREAD
+void BNDXc(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = _Y[idx] + _Sigma * _X[idx] / _T[x];
+  }
+}
+
+THREAD
+void BNDX(
+  uint3 Tid : SV_DispatchThreadID,
+  uint3 Gid : SV_GroupID,
+  uint3 GTid : SV_GroupThreadID
+)
+{
+  int x = Tid.x;
+  int y = Tid.y;
+  if (y < _Rows && x < _Cols)
+  {
+    int idx = y * _Cols + x;
+    _Y[idx] = _X[idx] - _T[x] * _Sigma;
   }
 }

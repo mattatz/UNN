@@ -5,16 +5,18 @@ using UnityEngine;
 namespace UNN
 {
 
-    public abstract class InnerLayer : Layer
+    public abstract class TrainLayer : Layer
     {
 
         [SerializeField] protected int rows, columns;
 
-        public InnerLayer(int rows, int columns) : base()
+        public TrainLayer(int rows, int columns) : base()
         {
             this.rows = rows;
             this.columns = columns;
         }
+
+        public abstract void Learn(Optimizer optimizer, ComputeShader compute, float rate);
 
     }
 

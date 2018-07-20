@@ -21,7 +21,7 @@ namespace UNN.Test
         [SerializeField] protected AffineLayer affine3;
         [SerializeField] protected SoftmaxLayer softmax;
 
-        [SerializeField] protected MomentumOptimizer optim1, optim2, optim3;
+        [SerializeField] protected MomentumOptimizer optimizer;
 
         public MNISTBatchNormalizationNetwork(int inputSize, int hiddenSize, int outputSize) : base()
         {
@@ -41,9 +41,7 @@ namespace UNN.Test
             affine3 = new AffineLayer(hiddenSize, outputSize);
             softmax = new SoftmaxLayer();
 
-            optim1 = new MomentumOptimizer(affine1, 0.9f);
-            optim2 = new MomentumOptimizer(affine2, 0.9f);
-            optim3 = new MomentumOptimizer(affine2, 0.9f);
+            optimizer = new MomentumOptimizer(0.9f);
         }
 
         public override float Accuracy(ComputeShader compute, Signal input, Signal answer)
@@ -58,27 +56,34 @@ namespace UNN.Test
         {
             Loss(compute, input, answer);
 
-            var softmaxSig = softmax.Backward(compute, answer);
-            // softmaxSig.Log();
+            var layers = new List<Layer>() {
+                affine1, bn1, relu1,
+                affine2, bn2, relu2,
+                affine3,
+                softmax,
+            };
 
-            var a3Sig = affine3.Backward(compute, softmaxSig); softmaxSig.Dispose();
-            
-            var r2Sig = relu2.Backward(compute, a3Sig); a3Sig.Dispose();
-            var bn2Sig = bn2.Backward(compute, r2Sig); r2Sig.Dispose();
-            var a2Sig = affine2.Backward(compute, bn2Sig); bn2Sig.Dispose();
+            layers.Reverse();
 
-            var r1Sig = relu1.Backward(compute, a2Sig); a2Sig.Dispose();
-            var bn1Sig = bn1.Backward(compute, r1Sig); r1Sig.Dispose();
-            var a1Sig = affine1.Backward(compute, bn1Sig); bn1Sig.Dispose();
-
-            a1Sig.Dispose();
+            var signal = answer;
+            layers.ForEach(layer =>
+            {
+                var tmp = signal;
+                signal = layer.Backward(compute, tmp);
+                tmp.Dispose();
+            });
+            signal.Dispose();
         }
 
         public override void Learn(ComputeShader compute, float rate = 0.1F)
         {
-            affine1.Learn(optim1, compute, rate);
-            affine2.Learn(optim2, compute, rate);
-            affine3.Learn(optim3, compute, rate);
+            affine1.Learn(optimizer, compute, rate);
+            bn1.Learn(optimizer, compute, rate);
+
+            affine2.Learn(optimizer, compute, rate);
+            bn2.Learn(optimizer, compute, rate);
+
+            affine3.Learn(optimizer, compute, rate);
         }
 
         public override float Loss(ComputeShader compute, Signal signal, Signal answer)
@@ -93,16 +98,20 @@ namespace UNN.Test
 
         public override Signal Predict(ComputeShader compute, Signal input)
         {
-            var s0 = affine1.Forward(compute, input);
-            var s1 = bn1.Forward(compute, s0);
-            var s2 = relu1.Forward(compute, s1);
-            var s3 = affine2.Forward(compute, s2);
+            var layers = new List<Layer>() {
+                affine1, bn1, relu1,
+                affine2, bn2, relu2,
+                affine3,
+            };
 
-            s0.Dispose();
-            s1.Dispose();
-            s2.Dispose();
+            layers.ForEach(layer =>
+            {
+                var tmp = input;
+                input = layer.Forward(compute, tmp);
+                tmp.Dispose();
+            });
 
-            return s3;
+            return input;
         }
 
         public override void Dispose()
@@ -119,9 +128,7 @@ namespace UNN.Test
 
             softmax.Dispose();
 
-            optim1.Dispose();
-            optim2.Dispose();
-            optim3.Dispose();
+            optimizer.Dispose();
         }
 
 
