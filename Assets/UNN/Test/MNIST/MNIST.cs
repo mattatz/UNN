@@ -19,6 +19,8 @@ namespace UNN.Test
         [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.1f;
 
         [SerializeField] protected string filename = "MNISTNetwork.json";
+        [SerializeField] protected bool load = true;
+
         [SerializeField] protected MNISTInput input;
         
         protected DigitDataset trainDataset, testDataset;
@@ -48,7 +50,7 @@ namespace UNN.Test
             var inputSize = trainDataset.Rows * trainDataset.Columns;
 
             path = Path.Combine(Application.persistentDataPath, filename);
-            if(File.Exists(path))
+            if(load && File.Exists(path))
             {
                 Debug.Log("load " + path);
                 network = LoadNetwork();

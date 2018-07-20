@@ -34,21 +34,21 @@ namespace UNN
             }
 
             var mu = new Signal(1, x.Columns);
-            MatOperations.MeanVM(compute, x, mu);
+            MatOperations.MeanMV(compute, mu, x);
 
             xc = Refresh(x, xc); // xc = x - mu
-            MatOperations.CopyMM(compute, xc, x);
-            MatOperations.SubMV(compute, xc, mu);
+            MatOperations.CopyMM(compute, x, xc);
+            MatOperations.SubVM(compute, mu, xc);
 
             var variance = new Signal(1, xc.Columns);
-            MatOperations.VarianceVM(compute, xc, variance);
+            MatOperations.VarianceMV(compute, xc, variance);
 
             std = Refresh(variance, std);
-            MatOperations.SqrtMM(compute, std, variance);
+            MatOperations.SqrtMM(compute, variance, std);
 
             xn = Refresh(xc, xn);
-            MatOperations.CopyMM(compute, xn, xc);
-            MatOperations.DivMV(compute, xn, std);
+            MatOperations.CopyMM(compute, xc, xn);
+            MatOperations.DivVM(compute, std, xn);
 
             batchSize = x.Rows;
 
@@ -81,18 +81,18 @@ namespace UNN
         public Signal Backward(ComputeShader compute, Signal dout)
         {
             var dbeta = new Signal(1, dout.Columns);
-            MatOperations.SumVM(compute, dbeta, dout);
+            MatOperations.SumMV(compute, dout, dbeta);
 
             var dgamma = new Signal(1, dout.Columns);
-            MatOperations.MulMM(compute, xn, dout);
-            MatOperations.SumVM(compute, dgamma, xn);
+            MatOperations.MulMM(compute, dout, xn);
+            MatOperations.SumMV(compute, xn, dgamma);
 
             var dxn = new Signal(dout);
             MatOperations.MulMMM(compute, dout, gamma, dxn);
 
             var dxc = new Signal(dxn);
-            MatOperations.CopyMM(compute, dxc, dxn);
-            MatOperations.DivMV(compute, dxc, std);
+            MatOperations.CopyMM(compute, dxn, dxc);
+            MatOperations.DivVM(compute, std, dxc);
 
             var dxn_x_xc = new Signal(dxn);
             MatOperations.MulMMM(compute, dxn, xc, dxn_x_xc);
@@ -104,7 +104,7 @@ namespace UNN
             MatOperations.DivMVM(compute, dxn_x_xc, std_x_std, dxn_x_xc_div_std_x_std);
 
             var dstd = new Signal(std);
-            MatOperations.SumVM(compute, dstd, dxn_x_xc_div_std_x_std);
+            MatOperations.SumMV(compute, dxn_x_xc_div_std_x_std, dstd);
 
             dbeta.Dispose();
             dgamma.Dispose();

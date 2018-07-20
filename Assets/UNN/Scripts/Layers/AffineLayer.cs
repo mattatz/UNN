@@ -50,7 +50,7 @@ namespace UNN
             MatOperations.Multiply(compute, x, weights, output);
 
             // matplus M´ = M + biases 
-            MatOperations.AddMV(compute, output, biases);
+            MatOperations.AddVM(compute, biases, output);
 
             // output.Log();
 
@@ -67,7 +67,7 @@ namespace UNN
             MatOperations.MultiplyTM(compute, x, dout, dW);
 
             dB = Refresh(1, dout.Columns, dB);
-            MatOperations.SumVM(compute, dB, dout);
+            MatOperations.SumMV(compute, dout, dB);
 
             // dx.Log();
             // dw.Log();

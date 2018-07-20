@@ -7,34 +7,34 @@ namespace UNN
 
     public class MatOperations {
 
-        public static void CopyMM(ComputeShader compute, Signal C, Signal B)
+        public static void CopyMM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMM(compute, compute.FindKernel("CopyMM"), C, B);
+            OpMM(compute, compute.FindKernel("CopyMM"), B, C);
         }
 
-        public static void SqrtMM(ComputeShader compute, Signal C, Signal B)
+        public static void SqrtMM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMM(compute, compute.FindKernel("SqrtMM"), C, B);
+            OpMM(compute, compute.FindKernel("SqrtMM"), B, C);
         }
 
-        public static void AddMM(ComputeShader compute, Signal C, Signal B)
+        public static void AddMM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMM(compute, compute.FindKernel("AddMM"), C, B);
+            OpMM(compute, compute.FindKernel("AddMM"), B, C);
         }
 
-        public static void SubMM(ComputeShader compute, Signal C, Signal B)
+        public static void SubMM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMM(compute, compute.FindKernel("SubMM"), C, B);
+            OpMM(compute, compute.FindKernel("SubMM"), B, C);
         }
 
-        public static void MulMM(ComputeShader compute, Signal C, Signal B)
+        public static void MulMM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMM(compute, compute.FindKernel("MulMM"), C, B);
+            OpMM(compute, compute.FindKernel("MulMM"), B, C);
         }
 
-        public static void DivMM(ComputeShader compute, Signal C, Signal B)
+        public static void DivMM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMM(compute, compute.FindKernel("DivMM"), C, B);
+            OpMM(compute, compute.FindKernel("DivMM"), B, C);
         }
 
         public static void MulMMM(ComputeShader compute, Signal A, Signal B, Signal C)
@@ -52,34 +52,34 @@ namespace UNN
             OpMVM(compute, compute.FindKernel("DivMVM"), A, B, C);
         }
 
-        public static void AddMV(ComputeShader compute, Signal C, Signal B)
+        public static void AddVM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMV(compute, compute.FindKernel("AddMV"), C, B);
+            OpVM(compute, compute.FindKernel("AddVM"), B, C);
         }
 
-        public static void SubMV(ComputeShader compute, Signal C, Signal B)
+        public static void SubVM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMV(compute, compute.FindKernel("SubMV"), C, B);
+            OpVM(compute, compute.FindKernel("SubVM"), B, C);
         }
 
-        public static void DivMV(ComputeShader compute, Signal C, Signal B)
+        public static void DivVM(ComputeShader compute, Signal B, Signal C)
         {
-            OpMV(compute, compute.FindKernel("DivMV"), C, B);
+            OpVM(compute, compute.FindKernel("DivVM"), B, C);
         }
 
-        public static void SumVM(ComputeShader compute, Signal C, Signal B)
+        public static void SumMV(ComputeShader compute, Signal B, Signal C)
         {
-            OpVM(compute, compute.FindKernel("SumVM"), C, B);
+            OpMV(compute, compute.FindKernel("SumMV"), B, C);
         }
 
-        public static void MeanVM(ComputeShader compute, Signal C, Signal B)
+        public static void MeanMV(ComputeShader compute, Signal B, Signal C)
         {
-            OpVM(compute, compute.FindKernel("MeanVM"), C, B);
+            OpMV(compute, compute.FindKernel("MeanMV"), B, C);
         } 
 
-        public static void VarianceVM(ComputeShader compute, Signal C, Signal B)
+        public static void VarianceMV(ComputeShader compute, Signal B, Signal C)
         {
-            OpVM(compute, compute.FindKernel("VarianceVM"), C, B);
+            OpMV(compute, compute.FindKernel("VarianceMV"), B, C);
         } 
 
         public static void Multiply(ComputeShader compute, Signal A, Signal B, Signal C)
@@ -166,21 +166,21 @@ namespace UNN
             compute.Dispatch(kernel, Mathf.FloorToInt(((int)cCols - 1) / tx) + 1, Mathf.FloorToInt(((int)cRows - 1) / ty) + 1, (int)tz);
         }
 
-        protected static void OpMM(ComputeShader compute, int kernel, Signal C, Signal B)
+        protected static void OpMM(ComputeShader compute, int kernel, Signal B, Signal C)
         {
-            int cRows = C.Rows, cCols = C.Columns;
             int bRows = B.Rows, bCols = B.Columns;
+            int cRows = C.Rows, cCols = C.Columns;
 
             if(cRows != bRows || cCols != bCols)
             {
                 Debug.LogWarning("B & C does not have same dimensions.");
             }
 
-            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
             compute.SetInt("_BRows", bRows); compute.SetInt("_BCols", bCols);
+            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
 
-            compute.SetBuffer(kernel, "_C", C.Buffer);
             compute.SetBuffer(kernel, "_B", B.Buffer);
+            compute.SetBuffer(kernel, "_C", C.Buffer);
 
             uint tx, ty, tz;
             compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
@@ -251,16 +251,14 @@ namespace UNN
         }
 
 
-
-
-        protected static void OpMV(ComputeShader compute, int kernel, Signal C, Signal B)
+        protected static void OpVM(ComputeShader compute, int kernel, Signal B, Signal C)
         {
-            int cRows = C.Rows, cCols = C.Columns;
             int bRows = B.Rows, bCols = B.Columns;
+            int cRows = C.Rows, cCols = C.Columns;
 
             if(bRows != 1)
             {
-                Debug.LogWarning("B rows must be 1.");
+                Debug.LogWarning("B rows must be 1. (B must be vector)");
             }
 
             if(cCols != bCols)
@@ -268,21 +266,21 @@ namespace UNN
                 Debug.LogWarning("B & C does not same columns.");
             }
 
-            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
             compute.SetInt("_BRows", bRows); compute.SetInt("_BCols", bCols);
+            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
 
-            compute.SetBuffer(kernel, "_C", C.Buffer);
             compute.SetBuffer(kernel, "_B", B.Buffer);
+            compute.SetBuffer(kernel, "_C", C.Buffer);
 
             uint tx, ty, tz;
             compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);
             compute.Dispatch(kernel, Mathf.FloorToInt(((int)cCols - 1) / tx) + 1, Mathf.FloorToInt(((int)cRows - 1) / ty) + 1, (int)tz);
         }
 
-        protected static void OpVM(ComputeShader compute, int kernel, Signal C, Signal B)
+        protected static void OpMV(ComputeShader compute, int kernel, Signal B, Signal C)
         {
-            int cRows = C.Rows, cCols = C.Columns;
             int bRows = B.Rows, bCols = B.Columns;
+            int cRows = C.Rows, cCols = C.Columns;
 
             if(cRows != 1)
             {
@@ -294,11 +292,11 @@ namespace UNN
                 Debug.LogWarning("B & C does not same columns.");
             }
 
-            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
             compute.SetInt("_BRows", bRows); compute.SetInt("_BCols", bCols);
+            compute.SetInt("_CRows", cRows); compute.SetInt("_CCols", cCols);
 
-            compute.SetBuffer(kernel, "_C", C.Buffer);
             compute.SetBuffer(kernel, "_B", B.Buffer);
+            compute.SetBuffer(kernel, "_C", C.Buffer);
 
             uint tx, ty, tz;
             compute.GetKernelThreadGroupSizes(kernel, out tx, out ty, out tz);

@@ -9,13 +9,13 @@
 #pragma kernel MulMMM
 #pragma kernel DivMMM
 
-#pragma kernel AddMV
-#pragma kernel SubMV
-#pragma kernel DivMV
+#pragma kernel AddVM
+#pragma kernel SubVM
+#pragma kernel DivVM
 
-#pragma kernel SumVM
-#pragma kernel MeanVM
-#pragma kernel VarianceVM
+#pragma kernel SumMV
+#pragma kernel MeanMV
+#pragma kernel VarianceMV
 
 #pragma kernel MatMul
 #pragma kernel MatMulTM
@@ -40,6 +40,7 @@
 #define BLOCK_SIZE 16
 #define THREAD [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
 #define THREAD_VM [numthreads(128, 1, 1)]
+#define THREAD_MV [numthreads(1, 128, 1)]
 
 #define EPSILON 1e-16
 
@@ -187,8 +188,8 @@ void DivMMM(
 }
 
 
-THREAD
-void AddMV(
+THREAD_VM
+void AddVM(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
@@ -203,8 +204,8 @@ void AddMV(
   }
 }
 
-THREAD
-void SubMV(
+THREAD_VM
+void SubVM(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
@@ -219,8 +220,8 @@ void SubMV(
   }
 }
 
-THREAD
-void DivMV(
+THREAD_VM
+void DivVM(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
@@ -236,8 +237,8 @@ void DivMV(
 }
 
 
-THREAD_VM
-void SumVM(
+THREAD
+void SumMV(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
@@ -256,8 +257,8 @@ void SumVM(
 }
 
 
-THREAD_VM
-void MeanVM(
+THREAD
+void MeanMV(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
@@ -276,8 +277,8 @@ void MeanVM(
 }
 
 
-THREAD_VM
-void VarianceVM(
+THREAD
+void VarianceMV(
   uint3 Tid : SV_DispatchThreadID,
   uint3 Gid : SV_GroupID,
   uint3 GTid : SV_GroupThreadID
@@ -295,7 +296,6 @@ void VarianceVM(
   }
   _C[x] = acc / _Rows;
 }
-
 
 
 groupshared float As[BLOCK_SIZE][BLOCK_SIZE];
