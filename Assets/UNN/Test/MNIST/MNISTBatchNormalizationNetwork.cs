@@ -65,8 +65,6 @@ namespace UNN.Test
 
             layers.Reverse();
 
-            Debug.Log("Gradient");
-
             var signal = answer;
             layers.ForEach(layer =>
             {
@@ -74,7 +72,7 @@ namespace UNN.Test
                 signal = layer.Backward(compute, tmp);
                 tmp.Dispose();
 
-                signal.Log(layer.GetType().ToString());
+                if(signal.IsNaN()) signal.Log(layer.GetType().ToString());
             });
             signal.Dispose();
         }

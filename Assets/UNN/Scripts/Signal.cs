@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 using UnityEngine;
@@ -74,6 +72,25 @@ namespace UNN
             float[,] value = new float[rows, columns];
             buffer.GetData(value);
             return value;
+        }
+
+        public bool IsNaN()
+        {
+            float[,] value = GetData();
+
+            for(int y = 0; y < rows; y++)
+            {
+                for(int x = 0; x < columns; x++)
+                {
+                    float v = value[y, x];
+                    if(float.IsNaN(v))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public void Log(string header = "")

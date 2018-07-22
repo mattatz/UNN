@@ -41,20 +41,20 @@ namespace UNN
             {
                 var mu = new Signal(1, x.Columns);
                 MatOperations.MeanMV(compute, x, mu);
-                x.Log("x");
-                mu.Log("mu");
+                // x.Log("x");
+                // mu.Log("mu");
 
                 xc = Refresh(x, xc); // xc = x - mu
                 MatOperations.SubMVM(compute, x, mu, xc);
-                xc.Log("xc");
+                // xc.Log("xc");
 
                 var variance = new Signal(1, xc.Columns);
                 MatOperations.VarianceMV(compute, xc, variance);
-                variance.Log("variance");
+                // variance.Log("variance");
 
                 std = Refresh(variance, std);
                 MatOperations.SqrtMM(compute, variance, std);
-                std.Log("std");
+                // std.Log("std");
 
                 xn = Refresh(xc, xn); // xn = xc / std
                 MatOperations.DivMVM(compute, xc, std, xn);
@@ -70,8 +70,8 @@ namespace UNN
             {
                 xc = Refresh(x, xc); // xc = x - runningMean
                 MatOperations.SubMVM(compute, x, runningMean, xc);
-                x.Log("x");
-                runningMean.Log("runningMean");
+                // x.Log("x");
+                // runningMean.Log("runningMean");
                 // xn.Log("xn");
 
                 xn = Refresh(xc, xn); // xn = xc / sqrt(runningVar + epsilon)
@@ -95,12 +95,18 @@ namespace UNN
             dbeta = Refresh(1, dout.Columns, dbeta);
             MatOperations.SumMV(compute, dout, dbeta);
 
+            // if(dbeta.IsNaN()) dbeta.Log("dbeta");
+
             dgamma = Refresh(1, dout.Columns, dgamma);
             MatOperations.MulMM(compute, dout, xn);
             MatOperations.SumMV(compute, xn, dgamma);
 
+            // if(dgamma.IsNaN()) dgamma.Log("dgamma");
+
             var dxn = new Signal(dout);
             MatOperations.MulMVM(compute, dout, gamma, dxn);
+
+            // if(dxn.IsNaN()) dxn.Log("dxn");
 
             // dout.Log("dout");
             // gamma.Log("gamma");
@@ -109,31 +115,50 @@ namespace UNN
             var dxc = new Signal(dxn);
             MatOperations.DivMVM(compute, dxn, std, dxc);
 
+            // if(dxc.IsNaN()) dxc.Log("dxc");
+
             var dxn_x_xc = new Signal(dxn);
             MatOperations.MulMMM(compute, dxn, xc, dxn_x_xc);
+
+            // if(dxn_x_xc.IsNaN()) dxn_x_xc.Log("dxn_x_xc");
 
             var std_x_std = new Signal(std);
             MatOperations.MulMMM(compute, std, std, std_x_std);
 
+            // if(std_x_std.IsNaN()) std_x_std.Log("std_x_std");
+
+
             var dxn_x_xc_div_std_x_std = new Signal(dxn_x_xc);
             MatOperations.DivMVM(compute, dxn_x_xc, std_x_std, dxn_x_xc_div_std_x_std);
+
+            // if(dxn_x_xc_div_std_x_std.IsNaN()) dxn_x_xc_div_std_x_std.Log("dxn_x_xc_div_std_x_std");
+
 
             var dstd = new Signal(std);
             MatOperations.SumMV(compute, dxn_x_xc_div_std_x_std, dstd);
 
+            // if(dstd.IsNaN()) dstd.Log("dstd");
+
+
             var dvar = new Signal(dstd);
             DVar(compute, dstd, std, dvar);
 
+            // if(dvar.IsNaN()) dvar.Log("dvar");
+
+
             DXc(compute, xc, dvar, dxc, 2f / batchSize);
+
+            // if(dxc.IsNaN()) dxc.Log("dxc");
 
             var dmu = new Signal(1, dxc.Columns);
             MatOperations.SumMV(compute, dxc, dmu);
 
+            // if(dmu.IsNaN()) dmu.Log("dmu");
+
             var dx = new Signal(dout);
             DX(compute, dxc, dmu, dx, 1f / batchSize);
 
-            // dxc.Log("dxc");
-            // dmu.Log("dmu");
+            // if(dx.IsNaN()) dx.Log("dx");
 
             dxn.Dispose();
             dxc.Dispose();

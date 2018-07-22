@@ -835,7 +835,7 @@ void BNDXc(
   if (y < _Rows && x < _Cols)
   {
     int idx = y * _Cols + x;
-    _Y[idx] = _Y[idx] + _Sigma * _X[idx] / _T[x];
+    _Y[idx] = _Y[idx] + _Sigma * _X[idx] * _T[x];
   }
 }
 

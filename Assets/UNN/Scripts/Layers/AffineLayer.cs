@@ -23,7 +23,7 @@ namespace UNN
             var weights = new float[rows, columns];
             var biases = new float[columns];
 
-            Debug.Log(weight_std);
+            // Debug.Log(weight_std);
 
             for(int y = 0; y < rows; y++)
             {

@@ -236,7 +236,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   compute: {fileID: 7200000, guid: bef4499de4c55f4409fb8b3587582e64, type: 3}
   iterations: 1000
-  batchSize: 64
+  batchSize: 32
   measure: 100
   learningRate: 0.01
   frame: 60

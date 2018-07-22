@@ -14,7 +14,7 @@ namespace UNN.Test
 
         [SerializeField] protected ComputeShader compute;
         [SerializeField, Range(1000, 10000)] protected int iterations = 10000;
-        [SerializeField, Range(32, 128)] protected int batchSize = 100;
+        [SerializeField, Range(8, 128)] protected int batchSize = 100;
         [SerializeField, Range(100, 500)] protected int measure = 500;
         [SerializeField, Range(0.01f, 0.1f)] protected float learningRate = 0.01f;
         [SerializeField, Range(1, 60)] protected int frame = 1;
