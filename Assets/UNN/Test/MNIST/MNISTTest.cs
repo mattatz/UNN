@@ -10,7 +10,7 @@ using Random = UnityEngine.Random;
 namespace UNN.Test
 {
 
-    public class MNIST : MonoBehaviour {
+    public class MNISTTest : MonoBehaviour {
 
         [SerializeField] protected ComputeShader compute;
         [SerializeField, Range(1000, 10000)] protected int iterations = 10000;
@@ -66,9 +66,15 @@ namespace UNN.Test
             path = Path.Combine(Application.persistentDataPath, filename);
             if(load && File.Exists(path))
             {
-                Debug.Log("load " + path);
-                network = LoadNetwork();
-                training = false;
+                network = LoadMNISTNetwork();
+                if(network == null) {
+                    network = new MNISTNetwork(inputSize, 50, 10);
+                } else
+                {
+                    Debug.Log("load " + path);
+                    training = false;
+                    Measure();
+                }
             } else
             {
                 network = new MNISTNetwork(inputSize, 50, 10);
@@ -77,7 +83,7 @@ namespace UNN.Test
 
         protected virtual void Update()
         {
-            if(training && Time.frameCount % frame == 0 && iter < iterations)
+            if(training && (Time.frameCount % frame == 0) && iter < iterations)
             {
                 iter++;
                 Signal input, answer;
@@ -89,13 +95,18 @@ namespace UNN.Test
                 answer.Dispose();
                 if(iter % measure == 0)
                 {
-                    Signal testInput, testAnswer;
-                    testDataset.GetAllSignals(out testInput, out testAnswer);
-                    accuracy = network.Accuracy(compute, testInput, testAnswer);
-                    testInput.Dispose();
-                    testAnswer.Dispose();
+                    Measure();
                 }
             }
+        }
+
+        protected void Measure()
+        {
+            Signal testInput, testAnswer;
+            testDataset.GetAllSignals(out testInput, out testAnswer);
+            accuracy = network.Accuracy(compute, testInput, testAnswer);
+            testInput.Dispose();
+            testAnswer.Dispose();
         }
 
         public void Evaluate(Signal input)
@@ -122,37 +133,13 @@ namespace UNN.Test
             lastLabel = label;
         }
 
-        protected void Test()
-        {
-            float[,] A = new float[2, 5]
-            {
-                { 0, 1, 2, 1, 1 }, { 3, 4, 5, 1, 1 }
-            };
-
-            float[,] B = new float[2, 3]
-            {
-                { 0, 1, 2, }, { 3, 4, 5, }
-            };
-
-            var sigA = new Signal(A);
-            var sigB = new Signal(B);
-            var sigAB = new Signal(A.GetLength(1), B.GetLength(1));
-
-            MatOperations.MultiplyTM(compute, sigA, sigB, sigAB);
-            sigAB.Log();
-
-            sigA.Dispose();
-            sigB.Dispose();
-            sigAB.Dispose();
-        }
-
         protected void SaveNetwork()
         {
             var json = JsonUtility.ToJson(network);
             File.WriteAllText(path, json);
         }
 
-        protected MNISTNetwork LoadNetwork()
+        protected MNISTNetwork LoadMNISTNetwork()
         {
             var json = File.ReadAllText(path);
             var network = JsonUtility.FromJson(json, typeof(MNISTNetwork)) as MNISTNetwork;

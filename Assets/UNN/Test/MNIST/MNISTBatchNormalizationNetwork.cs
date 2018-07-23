@@ -5,6 +5,7 @@ using UnityEngine;
 namespace UNN.Test
 {
 
+    [System.Serializable]
     public class MNISTBatchNormalizationNetwork : Network
     {
 
@@ -28,7 +29,6 @@ namespace UNN.Test
             this.inputSize = inputSize;
             this.hiddenSize = hiddenSize;
             this.outputSize = outputSize;
-
 
             affine1 = new AffineLayer(inputSize, hiddenSize, Mathf.Sqrt(2.0f / inputSize));
             bn1 = new BatchNormalizationLayer(hiddenSize, hiddenSize);

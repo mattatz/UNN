@@ -204,7 +204,7 @@ GameObject:
   - component: {fileID: 420134338}
   - component: {fileID: 420134339}
   m_Layer: 0
-  m_Name: MNIST
+  m_Name: MNISTTest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -235,14 +235,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   compute: {fileID: 7200000, guid: bef4499de4c55f4409fb8b3587582e64, type: 3}
-  iterations: 10000
+  iterations: 5000
   batchSize: 100
   measure: 100
-  learningRate: 0.1
+  learningRate: 0.01
+  frame: 30
   filename: MNISTNetwork.json
-  load: 0
+  load: 1
   input: {fileID: 833725051}
-  training: 1
+  training: 0
 --- !u!1 &833725050
 GameObject:
   m_ObjectHideFlags: 0
@@ -270,7 +271,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92271c1585e50e4418615c7b2d4f3162, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  network: {fileID: 420134339}
+  mnist: {fileID: 420134339}
   input: {fileID: 2100000, guid: 7d12f7fa8aa2c664b8839160cae972fc, type: 2}
   converter: {fileID: 7200000, guid: d3937aff4d6592140998df74f24d47e6, type: 3}
   size: 0.0593

@@ -9,7 +9,7 @@ namespace UNN.Test
 
         public RenderTexture Buffer { get { return buffers[read]; } }
 
-        [SerializeField] protected MNIST network;
+        [SerializeField] protected MNISTTest mnist;
         [SerializeField] protected Material input;
         [SerializeField] protected ComputeShader converter;
         [SerializeField, Range(0.05f, 0.1f)] protected float size = 0.1f;
@@ -85,7 +85,7 @@ namespace UNN.Test
 
             // signal.LogMNIST();
 
-            network.Evaluate(signal);
+            mnist.Evaluate(signal);
             signal.Dispose();
         }
 

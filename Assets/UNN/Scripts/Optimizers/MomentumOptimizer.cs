@@ -10,13 +10,12 @@ namespace UNN
     public class MomentumOptimizer : Optimizer
     {
 
-        [SerializeField] protected Dictionary<Signal, Signal> velocity;
+        protected Dictionary<Signal, Signal> velocity;
         [SerializeField] protected float momentum;
 
         public MomentumOptimizer(float m = 0.9f) : base()
         {
             momentum = m;
-            velocity = new Dictionary<Signal, Signal>();
         }
         
         public override void Update(ComputeShader compute, float rate, Signal gamma, Signal dGamma)
@@ -27,6 +26,7 @@ namespace UNN
             compute.SetFloat("_Momentum", momentum);
 
             Signal vGamma;
+            if(velocity == null) velocity = new Dictionary<Signal, Signal>();
             if(!velocity.ContainsKey(gamma))
             {
                 vGamma = new Signal(gamma);

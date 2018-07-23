@@ -7,25 +7,34 @@ using UnityEngine;
 namespace UNN.Test
 {
 
-    public class MNISTBatchNormalizationTest : MNIST {
+    public class MNISTBatchNormalizationTest : MNISTTest {
 
         protected override void SetupNetwork()
         {
             var inputSize = trainDataset.Rows * trainDataset.Columns;
 
-            /*
             path = Path.Combine(Application.persistentDataPath, filename);
             if(load && File.Exists(path))
             {
-                Debug.Log("load " + path);
-                network = LoadNetwork();
-                training = false;
+                network = LoadMNISTBatchNormalizationNetwork();
+                if(network == null) {
+                    network = new MNISTBatchNormalizationNetwork(inputSize, 100, 10);
+                } else
+                {
+                    Debug.Log("load " + path);
+                    training = false;
+                    Measure();
+                }
             } else
             {
+                network = new MNISTBatchNormalizationNetwork(inputSize, 100, 10);
             }
-            */
+        }
 
-            network = new MNISTBatchNormalizationNetwork(inputSize, 100, 10);
+        protected MNISTBatchNormalizationNetwork LoadMNISTBatchNormalizationNetwork()
+        {
+            var json = File.ReadAllText(path);
+            return JsonUtility.FromJson(json, typeof(MNISTBatchNormalizationNetwork)) as MNISTBatchNormalizationNetwork;
         }
 
         protected override void Update()

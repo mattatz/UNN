@@ -5,6 +5,7 @@ using UnityEngine;
 namespace UNN
 {
 
+    [System.Serializable]
     public class BatchNormalizationLayer : TrainLayer
     {
 
@@ -16,7 +17,7 @@ namespace UNN
         [SerializeField] protected int batchSize;
 
         protected Signal xc, xn, std;
-        protected Signal runningMean, runningVar;
+        [SerializeField] protected Signal runningMean, runningVar;
 
         public BatchNormalizationLayer(int rows, int columns, float momentum = 0.9f) : base(rows, columns)
         {
