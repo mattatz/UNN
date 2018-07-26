@@ -1,20 +1,21 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace UNN.Test
 {
 
-    public class MNISTInput : MonoBehaviour {
+    [RequireComponent (typeof(RawImage))]
+    public class MNISTInput : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    {
 
         [SerializeField] protected MNISTTest mnist;
-        [SerializeField] protected Material input;
+        [SerializeField] protected Material input, render;
         [SerializeField] protected ComputeShader converter;
         [SerializeField, Range(0.05f, 0.1f)] protected float size = 0.1f;
-
-        protected MaterialPropertyBlock block;
-        new protected Renderer renderer;
-        protected bool dragging;
 
         [SerializeField] protected RenderTexture[] buffers;
         protected int read = 0;
@@ -22,23 +23,29 @@ namespace UNN.Test
 
         protected int lastLabel;
 
+        protected RectTransform rectTransform;
+        protected Vector2 rectSize;
+        protected bool dragging;
+
+        protected Signal signal;
+
         void Start () {
+            rectTransform = GetComponent<RawImage>().rectTransform;
+            rectSize = rectTransform.sizeDelta;
+
             const int resolution = 128;
             buffers = new RenderTexture[2];
             buffers[0] = Create(resolution, resolution);
             buffers[1] = Create(resolution, resolution);
 
-            renderer = GetComponent<Renderer>();
-            block = new MaterialPropertyBlock();
-            renderer.GetPropertyBlock(block);
-            block.SetTexture("_Input", buffers[0]);
-            renderer.SetPropertyBlock(block);
+            render.SetTexture("_Input", buffers[0]);
         }
 
         protected Vector3 offset = new Vector3(0.5f, 0.5f, 0f);
         
         void Update () {
 
+            /*
             if(Input.GetMouseButtonDown(0))
             {
                 dragging = true;
@@ -73,6 +80,8 @@ namespace UNN.Test
                     }
                 }
             }
+            */
+
         }
 
         protected void Swap()
@@ -86,6 +95,7 @@ namespace UNN.Test
         {
             const int rows = 28;
             const int columns = 28;
+
             var signal = new Signal(1, rows * columns);
 
             var kernel = converter.FindKernel("Convert");
@@ -120,6 +130,44 @@ namespace UNN.Test
         {
             buffers[0].Release();
             buffers[1].Release();
+        }
+
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+            dragging = true;
+        }
+
+        public void OnDrag(PointerEventData eventData)
+        {
+            if(dragging)
+            {
+                Vector2 p;
+                if(RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, null, out p))
+                {
+                    p.x = p.x / rectSize.x + 0.5f;
+                    p.y = p.y / rectSize.y + 0.5f;
+
+                    input.SetTexture("_Source", buffers[read]);
+                    input.SetVector("_Point", p);
+                    input.SetFloat("_Size", size);
+
+                    Graphics.Blit(null, buffers[write], input, 0);
+                    Swap();
+
+                    Evaluate();
+                }
+            }
+        }
+
+        public void OnEndDrag(PointerEventData eventData)
+        {
+            Evaluate();
+
+            // clear
+            Graphics.Blit(null, buffers[write], input, 1);
+            Swap();
+
+            dragging = false;
         }
 
     }

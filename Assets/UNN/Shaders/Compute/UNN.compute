@@ -613,6 +613,8 @@ void Softmax(
   uint3 GTid : SV_GroupThreadID
 )
 {
+  // CAUTION: called after Exp kernel
+
   int tx = GTid.x;
   int ty = GTid.y;
   int bx = Gid.x;

@@ -22,6 +22,8 @@ namespace UNN.Test
         [SerializeField] protected string filename = "MNISTNetwork.json";
         [SerializeField] protected bool load = true;
 
+        [SerializeField] protected List<DigitProb> probs;
+
         protected DigitDataset trainDataset, testDataset;
         protected List<Texture2D> images;
 
@@ -116,19 +118,35 @@ namespace UNN.Test
             // int rows = result.GetLength(0);
             int cols = result.GetLength(1);
 
-            int label = 0;
-            float max = 0f;
+            float max = 0f, sum = 0f;
+            float[] exps = new float[cols];
+
             for(int x = 0; x < cols; x++)
             {
                 var v = result[0, x];
                 if(v > max)
                 {
                     max = v;
-                    label = x;
+                    lastLabel = x;
                 }
             }
 
-            lastLabel = label;
+            for(int x = 0; x < cols; x++)
+            {
+                var v = result[0, x];
+                exps[x] = Mathf.Exp(v - max);
+                sum += exps[x];
+            }
+
+            for(int x = 0; x < cols; x++)
+            {
+                var v = result[0, x];
+                if(x < probs.Count)
+                {
+                    probs[x].SetProbability(exps[x] / sum);
+                }
+            }
+
         }
 
         protected void SaveNetwork()

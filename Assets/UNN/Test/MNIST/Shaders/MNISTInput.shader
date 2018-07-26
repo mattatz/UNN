@@ -3,7 +3,7 @@
 
   Properties
   {
-    _Input ("", 2D) = "" {}
+    _Input ("Input", 2D) = "black" {}
   }
 
   CGINCLUDE

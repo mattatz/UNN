@@ -18,13 +18,12 @@ namespace UNN
         {
             var temp = new Signal(x.Rows, x.Columns);
 
-            y = Refresh(x, y);
-
             var kernel = compute.FindKernel("Exp");
             compute.SetBuffer(kernel, "_X", x.Buffer);
             compute.SetBuffer(kernel, "_Y", temp.Buffer);
             Dispatch(compute, kernel, temp.Rows, temp.Columns);
 
+            y = Refresh(x, y);
             kernel = compute.FindKernel("Softmax");
             compute.SetBuffer(kernel, "_X", temp.Buffer);
             compute.SetBuffer(kernel, "_Y", y.Buffer);
