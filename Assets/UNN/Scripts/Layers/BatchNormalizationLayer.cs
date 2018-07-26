@@ -96,78 +96,45 @@ namespace UNN
             dbeta = Refresh(1, dout.Columns, dbeta);
             MatOperations.SumMV(compute, dout, dbeta);
 
-            // if(dbeta.IsNaN()) dbeta.Log("dbeta");
-
             dgamma = Refresh(1, dout.Columns, dgamma);
             MatOperations.MulMM(compute, dout, xn);
             MatOperations.SumMV(compute, xn, dgamma);
 
-            // if(dgamma.IsNaN()) dgamma.Log("dgamma");
-
             var dxn = new Signal(dout);
             MatOperations.MulMVM(compute, dout, gamma, dxn);
-
-            // if(dxn.IsNaN()) dxn.Log("dxn");
-
-            // dout.Log("dout");
-            // gamma.Log("gamma");
-            // dxn.Log("dxn");
 
             var dxc = new Signal(dxn);
             MatOperations.DivMVM(compute, dxn, std, dxc);
 
-            // if(dxc.IsNaN()) dxc.Log("dxc");
-
             var dxn_x_xc = new Signal(dxn);
             MatOperations.MulMMM(compute, dxn, xc, dxn_x_xc);
-
-            // if(dxn_x_xc.IsNaN()) dxn_x_xc.Log("dxn_x_xc");
+            dxn.Dispose();
 
             var std_x_std = new Signal(std);
             MatOperations.MulMMM(compute, std, std, std_x_std);
 
-            // if(std_x_std.IsNaN()) std_x_std.Log("std_x_std");
-
-
             var dxn_x_xc_div_std_x_std = new Signal(dxn_x_xc);
             MatOperations.DivMVM(compute, dxn_x_xc, std_x_std, dxn_x_xc_div_std_x_std);
-
-            // if(dxn_x_xc_div_std_x_std.IsNaN()) dxn_x_xc_div_std_x_std.Log("dxn_x_xc_div_std_x_std");
-
+            dxn_x_xc.Dispose();
+            std_x_std.Dispose();
 
             var dstd = new Signal(std);
             MatOperations.SumMV(compute, dxn_x_xc_div_std_x_std, dstd);
-
-            // if(dstd.IsNaN()) dstd.Log("dstd");
-
+            dxn_x_xc_div_std_x_std.Dispose();
 
             var dvar = new Signal(dstd);
             DVar(compute, dstd, std, dvar);
-
-            // if(dvar.IsNaN()) dvar.Log("dvar");
-
+            dstd.Dispose();
 
             DXc(compute, xc, dvar, dxc, 2f / batchSize);
-
-            // if(dxc.IsNaN()) dxc.Log("dxc");
+            dvar.Dispose();
 
             var dmu = new Signal(1, dxc.Columns);
             MatOperations.SumMV(compute, dxc, dmu);
 
-            // if(dmu.IsNaN()) dmu.Log("dmu");
-
             var dx = new Signal(dout);
             DX(compute, dxc, dmu, dx, 1f / batchSize);
-
-            // if(dx.IsNaN()) dx.Log("dx");
-
-            dxn.Dispose();
             dxc.Dispose();
-            dxn_x_xc.Dispose();
-            std_x_std.Dispose();
-            dxn_x_xc_div_std_x_std.Dispose();
-            dstd.Dispose();
-            dvar.Dispose();
             dmu.Dispose();
 
             return dx;
@@ -232,24 +199,33 @@ namespace UNN
             {
                 gamma.Dispose();
                 beta.Dispose();
-
-                gamma = beta = null;
             }
 
-            if(dgamma != null)
+            if (dgamma != null)
             {
                 dgamma.Dispose();
                 dbeta.Dispose();
+            }
 
+            if(xc != null) { 
                 xc.Dispose();
                 xn.Dispose();
+            }
+
+            if(std != null)
+            {
                 std.Dispose();
+            }
+
+            if(runningMean != null)
+            {
                 runningMean.Dispose();
                 runningVar.Dispose();
-
-                dgamma = dbeta = null;
-                xc = xn = std = runningMean = runningVar = null;
             }
+
+            dgamma = dbeta = null;
+            gamma = beta = null;
+            xc = xn = std = runningMean = runningVar = null;
         }
 
     }

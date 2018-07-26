@@ -7,13 +7,13 @@ namespace UNN.Test
 
     public class MNISTInput : MonoBehaviour {
 
-        public RenderTexture Buffer { get { return buffers[read]; } }
-
         [SerializeField] protected MNISTTest mnist;
         [SerializeField] protected Material input;
         [SerializeField] protected ComputeShader converter;
         [SerializeField, Range(0.05f, 0.1f)] protected float size = 0.1f;
 
+        protected MaterialPropertyBlock block;
+        new protected Renderer renderer;
         protected bool dragging;
 
         [SerializeField] protected RenderTexture[] buffers;
@@ -27,7 +27,15 @@ namespace UNN.Test
             buffers = new RenderTexture[2];
             buffers[0] = Create(resolution, resolution);
             buffers[1] = Create(resolution, resolution);
+
+            renderer = GetComponent<Renderer>();
+            block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            block.SetTexture("_Input", buffers[0]);
+            renderer.SetPropertyBlock(block);
         }
+
+        protected Vector3 offset = new Vector3(0.5f, 0.5f, 0f);
         
         void Update () {
 
@@ -47,14 +55,23 @@ namespace UNN.Test
 
             if(dragging)
             {
-                var p = Camera.main.ScreenToViewportPoint(Input.mousePosition);
+                var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                var pl = new Plane(-Camera.main.transform.forward, transform.position);
+                float enter;
+                if(pl.Raycast(ray, out enter))
+                {
+                    var p = ray.direction * enter + ray.origin;
+                    p = transform.InverseTransformPoint(p) + offset;
+                    if(0f <= p.x && p.x < 1f && 0f < p.y && p.y < 1f)
+                    {
+                        input.SetTexture("_Source", buffers[read]);
+                        input.SetVector("_Point", p);
+                        input.SetFloat("_Size", size);
 
-                input.SetTexture("_Source", buffers[read]);
-                input.SetVector("_Point", p);
-                input.SetFloat("_Size", size);
-
-                Graphics.Blit(null, buffers[write], input, 0);
-                Swap();
+                        Graphics.Blit(null, buffers[write], input, 0);
+                        Swap();
+                    }
+                }
             }
         }
 

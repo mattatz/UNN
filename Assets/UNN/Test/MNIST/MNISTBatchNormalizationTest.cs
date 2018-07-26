@@ -34,13 +34,13 @@ namespace UNN.Test
         protected MNISTBatchNormalizationNetwork LoadMNISTBatchNormalizationNetwork()
         {
             var json = File.ReadAllText(path);
-            return JsonUtility.FromJson(json, typeof(MNISTBatchNormalizationNetwork)) as MNISTBatchNormalizationNetwork;
+            var nw = JsonUtility.FromJson(json, typeof(MNISTBatchNormalizationNetwork)) as MNISTBatchNormalizationNetwork;
+            return nw;
         }
 
         protected override void Update()
         {
             if(training && iter < iterations)
-            // if(training && iter < 1)
             {
                 iter++;
                 Signal input, answer;
@@ -60,8 +60,6 @@ namespace UNN.Test
                 }
             }
         }
-
-
 
     }
 

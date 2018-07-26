@@ -22,8 +22,6 @@ namespace UNN.Test
         [SerializeField] protected string filename = "MNISTNetwork.json";
         [SerializeField] protected bool load = true;
 
-        [SerializeField] protected MNISTInput input;
-        
         protected DigitDataset trainDataset, testDataset;
         protected List<Texture2D> images;
 
@@ -223,7 +221,11 @@ namespace UNN.Test
 
         protected void OnDestroy()
         {
-            network.Dispose();
+            if(network != null)
+            {
+                network.Dispose();
+                network = null;
+            }
         }
 
         protected void OnGUI()
@@ -232,8 +234,6 @@ namespace UNN.Test
             {
                 DrawMNISTView();
             }
-
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), input.Buffer);
 
             using(new GUILayout.HorizontalScope())
             {

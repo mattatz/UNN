@@ -130,12 +130,17 @@ namespace UNN.Test
             relu2.Dispose();
 
             affine3.Dispose();
-
             softmax.Dispose();
 
             optimizer.Dispose();
-        }
 
+            affine1 = affine2 = null;
+            bn1 = bn2 = null;
+            relu1 = relu2 = null;
+
+            softmax = null;
+            optimizer = null;
+        }
 
     }
 

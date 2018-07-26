@@ -3,9 +3,7 @@
 
   Properties
   {
-    _Source ("", 2D) = "" {}
-    _Size ("Size", Float) = 0.1
-    _Alpha ("Alpha", Range(0.0, 1.0)) = 0.1
+    _Input ("", 2D) = "" {}
   }
 
   CGINCLUDE
@@ -30,18 +28,13 @@
     return o;
   }
 
-  sampler2D _Source;
-  float2 _Point;
-  float _Size, _Alpha;
-
   ENDCG
 
   SubShader
   {
     Cull Off ZWrite Off ZTest Always
 
-    // paint
-    Pass 
+    Pass
     {
       CGPROGRAM
       #pragma vertex vert
@@ -49,31 +42,13 @@
 
       #include "UnityCG.cginc"
 
+      sampler2D _Input;
+
       fixed4 frag(v2f i) : SV_Target
       {
-        fixed4 col = tex2D(_Source, i.uv);
-        float d = distance(_Point, i.uv);
-        col.rgb += saturate(1.0 - d / _Size);
-        col.rgb = saturate(col.rgb);
-        col.a = _Alpha;
+        fixed4 col = tex2D(_Input, i.uv);
+        col.rgb = (1.0).xxx - col.rgb;
         return col;
-      }
-
-      ENDCG
-    }
-
-    // clear
-    Pass 
-    {
-      CGPROGRAM
-      #pragma vertex vert
-      #pragma fragment frag
-
-      #include "UnityCG.cginc"
-
-      fixed4 frag(v2f i) : SV_Target
-      {
-        return float4(0, 0, 0, _Alpha);
       }
 
       ENDCG
