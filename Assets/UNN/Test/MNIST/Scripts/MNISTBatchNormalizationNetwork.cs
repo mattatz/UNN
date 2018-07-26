@@ -62,7 +62,6 @@ namespace UNN.Test
                 affine3,
                 softmax,
             };
-
             layers.Reverse();
 
             var signal = answer;
@@ -71,8 +70,7 @@ namespace UNN.Test
                 var tmp = signal;
                 signal = layer.Backward(compute, tmp);
                 tmp.Dispose();
-
-                if(signal.IsNaN()) signal.Log(layer.GetType().ToString());
+                // if(signal.IsNaN()) signal.Log(layer.GetType().ToString());
             });
             signal.Dispose();
         }
@@ -105,12 +103,9 @@ namespace UNN.Test
                 affine3,
             };
 
-            // Debug.Log("Predict");
-
             layers.ForEach(layer =>
             {
                 // input.Log(layer.GetType().ToString());
-
                 var tmp = input;
                 input = layer.Forward(compute, tmp, train);
                 tmp.Dispose();
@@ -133,13 +128,6 @@ namespace UNN.Test
             softmax.Dispose();
 
             optimizer.Dispose();
-
-            affine1 = affine2 = null;
-            bn1 = bn2 = null;
-            relu1 = relu2 = null;
-
-            softmax = null;
-            optimizer = null;
         }
 
     }

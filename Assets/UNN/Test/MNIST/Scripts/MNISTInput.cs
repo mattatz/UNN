@@ -33,55 +33,12 @@ namespace UNN.Test
             rectTransform = GetComponent<RawImage>().rectTransform;
             rectSize = rectTransform.sizeDelta;
 
-            const int resolution = 128;
+            const int resolution = 64;
             buffers = new RenderTexture[2];
             buffers[0] = Create(resolution, resolution);
             buffers[1] = Create(resolution, resolution);
 
             render.SetTexture("_Input", buffers[0]);
-        }
-
-        protected Vector3 offset = new Vector3(0.5f, 0.5f, 0f);
-        
-        void Update () {
-
-            /*
-            if(Input.GetMouseButtonDown(0))
-            {
-                dragging = true;
-            } else if(Input.GetMouseButtonUp(0))
-            {
-                Evaluate();
-
-                // clear
-                Graphics.Blit(null, buffers[write], input, 1);
-                Swap();
-
-                dragging = false;
-            }
-
-            if(dragging)
-            {
-                var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-                var pl = new Plane(-Camera.main.transform.forward, transform.position);
-                float enter;
-                if(pl.Raycast(ray, out enter))
-                {
-                    var p = ray.direction * enter + ray.origin;
-                    p = transform.InverseTransformPoint(p) + offset;
-                    if(0f <= p.x && p.x < 1f && 0f < p.y && p.y < 1f)
-                    {
-                        input.SetTexture("_Source", buffers[read]);
-                        input.SetVector("_Point", p);
-                        input.SetFloat("_Size", size);
-
-                        Graphics.Blit(null, buffers[write], input, 0);
-                        Swap();
-                    }
-                }
-            }
-            */
-
         }
 
         protected void Swap()

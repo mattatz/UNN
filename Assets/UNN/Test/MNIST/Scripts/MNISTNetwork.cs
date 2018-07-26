@@ -77,7 +77,6 @@ namespace UNN.Test
             var layers = new List<Layer>() {
                 affine1, relu, affine2, softmax
             };
-
             layers.Reverse();
 
             var signal = answer;

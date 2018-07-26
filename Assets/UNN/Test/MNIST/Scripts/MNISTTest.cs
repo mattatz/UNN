@@ -46,17 +46,9 @@ namespace UNN.Test
             trainDataset = LoadDataset(trainImagePath, trainLabelPath);
             testDataset = LoadDataset(testImagePath, testLabelPath);
 
-            // images = trainDataset.Digits.Take(128).Select(digit => digit.ToTexture(trainDataset.Rows, trainDataset.Columns)).ToList();
-
             SetupNetwork();
 
-            /*
-            Signal input, answer;
-            trainDataset.GetSignals(new List<Digit>() { trainDataset.Digits[0] }, out input, out answer);
-            input.LogMNIST();
-            input.Dispose();
-            answer.Dispose();
-            */
+            // images = trainDataset.Digits.Take(128).Select(digit => digit.ToTexture(trainDataset.Rows, trainDataset.Columns)).ToList();
         }
 
         protected virtual void SetupNetwork()
@@ -140,7 +132,6 @@ namespace UNN.Test
 
             for(int x = 0; x < cols; x++)
             {
-                var v = result[0, x];
                 if(x < probs.Count)
                 {
                     probs[x].SetProbability(exps[x] / sum);
